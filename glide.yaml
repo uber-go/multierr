@@ -1,4 +1,4 @@
-package: github.com/uber-go/multierr
+package: go.uber.org/multierr
 import: []
 testImport:
 - package: github.com/stretchr/testify

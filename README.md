@@ -6,7 +6,7 @@ Easy grouping of one or more errors into a single error.
 Installation
 ------------
 
-    go get -u github.com/uber-go/multierr
+    go get -u go.uber.org/multierr
 
 Usage
 -----
