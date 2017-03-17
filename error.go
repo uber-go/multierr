@@ -22,12 +22,13 @@ package multierr
 
 import "strings"
 
-// DefaultPrefix is the prefix used for combined error messages. To use a
-// different prefix, pass the Prefix option to FromSlice.
-const DefaultPrefix = "The following errors occurred:"
+const (
+	// Amount of space we reserve in a slice when flattening nested errorGroups.
+	_errorBuffer = 8
 
-// Amount of space we reserve in a slice when flattening nested errorGroups.
-const _errorBuffer = 8
+	// Prefix for multiError messages
+	_prefix = "the following errors occurred:"
+)
 
 // errorGroup is an interface implemented by any error type which combines one
 // or more errors.
@@ -35,25 +36,19 @@ type errorGroup interface {
 	Causes() []error
 }
 
-type multiError struct {
-	Prefix string
-	Errors []error
-}
+type multiError []error
 
-func (me *multiError) String() string {
+func (me multiError) String() string {
 	return me.Error()
 }
 
-func (me *multiError) Causes() []error {
-	return me.Errors
+func (me multiError) Causes() []error {
+	return []error(me)
 }
 
-func (me *multiError) Error() string {
-	msg := me.Prefix
-	if msg == "" {
-		msg = DefaultPrefix
-	}
-	for _, err := range me.Errors {
+func (me multiError) Error() string {
+	msg := _prefix
+	for _, err := range me {
 		msg += "\n -  " + indentTail(4, err.Error())
 	}
 	return msg
@@ -68,17 +63,6 @@ func indentTail(spaces int, s string) string {
 		lines[i+1] = prefix + line
 	}
 	return strings.Join(lines, "\n")
-}
-
-// Option customizes a multierr error.
-type Option struct{ apply func(*multiError) }
-
-// Prefix changes the prefix that will be printed before the list of error
-// messages. Defaults to DefaultPrefix.
-func Prefix(prefix string) Option {
-	return Option{apply: func(me *multiError) {
-		me.Prefix = prefix
-	}}
 }
 
 // flatten flattens nested errorGroups into a single list of errors.
@@ -145,16 +129,15 @@ func flattenTo(dest, src []error) []error {
 // empty or all the errors in it are nil, a nil error is returned. If the list
 // contains only a single error, the error is returned as-is.
 //
-// If any error in the list satisfies the following interface, errors from it
-// will be flattened. This also applies to errors found nested inside other
+// If an error in the list satisfies the following interface, it is squashed
+// away and errors from it are flattened. This also applies to errors found
+// nested inside other
 // ErrorGroups.
 //
 // 	type ErrorGroup interface {
 // 		Causes() []error
 // 	}
-//
-// Returns nil if the error list is empty.
-func FromSlice(errors []error, opts ...Option) error {
+func FromSlice(errors []error) error {
 	errors = flatten(errors)
 	switch len(errors) {
 	case 0:
@@ -162,12 +145,7 @@ func FromSlice(errors []error, opts ...Option) error {
 	case 1:
 		return errors[0]
 	}
-
-	err := multiError{Errors: errors}
-	for _, opt := range opts {
-		opt.apply(&err)
-	}
-	return &err
+	return multiError(errors)
 }
 
 // Combine combines the given collection of errors together. nil values will

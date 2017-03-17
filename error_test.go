@@ -43,12 +43,11 @@ func TestFromSlice(t *testing.T) {
 				errors.New("foo"),
 				errors.New("bar"),
 			},
-			wantError: &multiError{
-				Errors: []error{errors.New("foo"),
-					errors.New("bar"),
-				},
+			wantError: multiError{
+				errors.New("foo"),
+				errors.New("bar"),
 			},
-			wantMessage: "The following errors occurred:\n" +
+			wantMessage: "the following errors occurred:\n" +
 				" -  foo\n" +
 				" -  bar",
 		},
@@ -58,14 +57,12 @@ func TestFromSlice(t *testing.T) {
 				errors.New("multi\n  line\nerror message"),
 				errors.New("single line error message"),
 			},
-			wantError: &multiError{
-				Errors: []error{
-					errors.New("great sadness"),
-					errors.New("multi\n  line\nerror message"),
-					errors.New("single line error message"),
-				},
+			wantError: multiError{
+				errors.New("great sadness"),
+				errors.New("multi\n  line\nerror message"),
+				errors.New("single line error message"),
 			},
-			wantMessage: "The following errors occurred:\n" +
+			wantMessage: "the following errors occurred:\n" +
 				" -  great sadness\n" +
 				" -  multi\n" +
 				"      line\n" +
@@ -75,23 +72,19 @@ func TestFromSlice(t *testing.T) {
 		{
 			giveErrors: []error{
 				errors.New("foo"),
-				&multiError{
-					Errors: []error{
-						errors.New("bar"),
-						errors.New("baz"),
-					},
+				multiError{
+					errors.New("bar"),
+					errors.New("baz"),
 				},
 				errors.New("qux"),
 			},
-			wantError: &multiError{
-				Errors: []error{
-					errors.New("foo"),
-					errors.New("bar"),
-					errors.New("baz"),
-					errors.New("qux"),
-				},
+			wantError: multiError{
+				errors.New("foo"),
+				errors.New("bar"),
+				errors.New("baz"),
+				errors.New("qux"),
 			},
-			wantMessage: "The following errors occurred:\n" +
+			wantMessage: "the following errors occurred:\n" +
 				" -  foo\n" +
 				" -  bar\n" +
 				" -  baz\n" +
@@ -106,15 +99,13 @@ func TestFromSlice(t *testing.T) {
 				},
 				errors.New("qux"),
 			},
-			wantError: &multiError{
-				Errors: []error{
-					errors.New("foo"),
-					errors.New("bar"),
-					errors.New("baz"),
-					errors.New("qux"),
-				},
+			wantError: multiError{
+				errors.New("foo"),
+				errors.New("bar"),
+				errors.New("baz"),
+				errors.New("qux"),
 			},
-			wantMessage: "The following errors occurred:\n" +
+			wantMessage: "the following errors occurred:\n" +
 				" -  foo\n" +
 				" -  bar\n" +
 				" -  baz\n" +
@@ -132,7 +123,7 @@ func TestFromSlice(t *testing.T) {
 	}
 }
 
-func TestCombineErrors(t *testing.T) {
+func TestCombine(t *testing.T) {
 	tests := []struct {
 		give []error
 		want error
@@ -141,18 +132,14 @@ func TestCombineErrors(t *testing.T) {
 			give: []error{
 				errors.New("foo"),
 				nil,
-				&multiError{
-					Errors: []error{
-						errors.New("bar"),
-					},
+				multiError{
+					errors.New("bar"),
 				},
 				nil,
 			},
-			want: &multiError{
-				Errors: []error{
-					errors.New("foo"),
-					errors.New("bar"),
-				},
+			want: multiError{
+				errors.New("foo"),
+				errors.New("bar"),
 			},
 		},
 	}
