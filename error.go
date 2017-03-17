@@ -193,21 +193,35 @@ func FromSlice(errors []error) error {
 // 	multierr.Combine(
 // 		reader.Close(),
 // 		writer.Close(),
+// 		pipe.Close(),
 // 	)
-//
-// This may also be used to record failure of deferred operations without
-// losing information about the original error.
-//
-// 	func someFunc(...) (err error) {
-// 		f := open(...)
-// 		defer func() {
-// 			err = multierr.Combine(err, f.Close())
-// 		}()
-// 		// ...
-// 	}
-//
-// Combine does not allow customizing the error message. Use FromSlice if you
-// need to customize the error message.
 func Combine(errors ...error) error {
 	return FromSlice(errors)
+}
+
+// Append appends the given error to the destination. Either error value may
+// be nil or an ErrorGroup.
+//
+// This function is a specialization of Combine for the common case where
+// there are only two errors.
+//
+// 	err = multierr.Append(reader.Close(), writer.Close())
+//
+// This may be used to record failure of deferred operations without losing
+// information about the original error.
+//
+// 	func doSomething(..) (err error) {
+// 		f := acquireResource()
+// 		defer func() {
+// 			err = multierr.Append(err, f.Close())
+// 		}()
+func Append(dest error, err error) error {
+	switch {
+	case dest == nil:
+		return err
+	case err == nil:
+		return dest
+	}
+	errors := [2]error{dest, err}
+	return FromSlice(errors[0:])
 }

@@ -148,3 +148,63 @@ func TestCombine(t *testing.T) {
 		assert.Equal(t, tt.want, Combine(tt.give...))
 	}
 }
+
+func TestAppend(t *testing.T) {
+	tests := []struct {
+		left  error
+		right error
+		want  error
+	}{
+		{
+			left:  nil,
+			right: nil,
+			want:  nil,
+		},
+		{
+			left:  nil,
+			right: errors.New("great sadness"),
+			want:  errors.New("great sadness"),
+		},
+		{
+			left:  errors.New("great sadness"),
+			right: nil,
+			want:  errors.New("great sadness"),
+		},
+		{
+			left:  errors.New("foo"),
+			right: errors.New("bar"),
+			want: multiError{
+				errors.New("foo"),
+				errors.New("bar"),
+			},
+		},
+		{
+			left: multiError{
+				errors.New("foo"),
+				errors.New("bar"),
+			},
+			right: errors.New("baz"),
+			want: multiError{
+				errors.New("foo"),
+				errors.New("bar"),
+				errors.New("baz"),
+			},
+		},
+		{
+			left: errors.New("baz"),
+			right: multiError{
+				errors.New("foo"),
+				errors.New("bar"),
+			},
+			want: multiError{
+				errors.New("baz"),
+				errors.New("foo"),
+				errors.New("bar"),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		assert.Equal(t, tt.want, Append(tt.left, tt.right))
+	}
+}
