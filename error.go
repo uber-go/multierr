@@ -20,7 +20,12 @@
 
 package multierr
 
-import "strings"
+import (
+	"bytes"
+	"io"
+	"strings"
+	"sync"
+)
 
 const (
 	// Amount of space we reserve in a slice when flattening nested errorGroups.
@@ -30,9 +35,17 @@ const (
 	_prefix = "the following errors occurred:"
 )
 
+// _bufferPool is a pool of bytes.Buffer objects
+var _bufferPool = sync.Pool{
+	New: func() interface{} {
+		return &bytes.Buffer{}
+	},
+}
+
 // errorGroup is an interface implemented by any error type which combines one
 // or more errors.
 type errorGroup interface {
+	// Causes returns the list of errors that are wrapped by this ErrorGroup.
 	Causes() []error
 }
 
@@ -47,22 +60,45 @@ func (me multiError) Causes() []error {
 }
 
 func (me multiError) Error() string {
-	msg := _prefix
+	errLineIndent := strings.Repeat(" ", 4)
+
+	buff := _bufferPool.Get().(*bytes.Buffer)
+	buff.Reset()
+
+	buff.WriteString(_prefix)
 	for _, err := range me {
-		msg += "\n -  " + indentTail(4, err.Error())
+		buff.WriteString("\n -  ")
+		writeWithPrefix(buff, errLineIndent, err.Error())
 	}
-	return msg
+
+	result := buff.String()
+	_bufferPool.Put(buff)
+	return result
 }
 
-// indentTail prepends the given number of spaces to all lines following the
-// first line of the given string.
-func indentTail(spaces int, s string) string {
-	prefix := strings.Repeat(" ", spaces)
-	lines := strings.Split(s, "\n")
-	for i, line := range lines[1:] {
-		lines[i+1] = prefix + line
+// Writes s to the writer with the given prefix added before each line after
+// the first.
+func writeWithPrefix(w io.Writer, prefix, s string) error {
+	first := true
+	for len(s) > 0 {
+		if first {
+			first = false
+		} else if _, err := io.WriteString(w, prefix); err != nil {
+			return err
+		}
+
+		idx := strings.IndexByte(s, '\n')
+		if idx < 0 {
+			idx = len(s) - 1
+		}
+
+		if _, err := io.WriteString(w, s[:idx+1]); err != nil {
+			return err
+		}
+
+		s = s[idx+1:]
 	}
-	return strings.Join(lines, "\n")
+	return nil
 }
 
 // flatten flattens nested errorGroups into a single list of errors.
