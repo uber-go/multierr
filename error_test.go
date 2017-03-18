@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type myErrorGroup []error
@@ -25,18 +26,20 @@ func (e myErrorGroup) Causes() []error {
 
 func TestFromSlice(t *testing.T) {
 	tests := []struct {
-		giveErrors  []error
-		wantError   error
-		wantMessage string
+		giveErrors     []error
+		wantError      error
+		wantMultiline  string
+		wantSingleline string
 	}{
 		{
 			giveErrors: []error{},
 			wantError:  nil,
 		},
 		{
-			giveErrors:  []error{errors.New("great sadness")},
-			wantError:   errors.New("great sadness"),
-			wantMessage: "great sadness",
+			giveErrors:     []error{errors.New("great sadness")},
+			wantError:      errors.New("great sadness"),
+			wantMultiline:  "great sadness",
+			wantSingleline: "great sadness",
 		},
 		{
 			giveErrors: []error{
@@ -47,9 +50,10 @@ func TestFromSlice(t *testing.T) {
 				errors.New("foo"),
 				errors.New("bar"),
 			},
-			wantMessage: "the following errors occurred:\n" +
+			wantMultiline: "the following errors occurred:\n" +
 				" -  foo\n" +
 				" -  bar",
+			wantSingleline: "foo; bar",
 		},
 		{
 			giveErrors: []error{
@@ -62,18 +66,22 @@ func TestFromSlice(t *testing.T) {
 				errors.New("multi\n  line\nerror message"),
 				errors.New("single line error message"),
 			},
-			wantMessage: "the following errors occurred:\n" +
+			wantMultiline: "the following errors occurred:\n" +
 				" -  great sadness\n" +
 				" -  multi\n" +
 				"      line\n" +
 				"    error message\n" +
 				" -  single line error message",
+			wantSingleline: "great sadness; " +
+				"multi\n  line\nerror message; " +
+				"single line error message",
 		},
 		{
 			giveErrors: []error{
 				errors.New("foo"),
 				multiError{
 					errors.New("bar"),
+					nil,
 					errors.New("baz"),
 				},
 				errors.New("qux"),
@@ -84,11 +92,12 @@ func TestFromSlice(t *testing.T) {
 				errors.New("baz"),
 				errors.New("qux"),
 			},
-			wantMessage: "the following errors occurred:\n" +
+			wantMultiline: "the following errors occurred:\n" +
 				" -  foo\n" +
 				" -  bar\n" +
 				" -  baz\n" +
 				" -  qux",
+			wantSingleline: "foo; bar; baz; qux",
 		},
 		{
 			giveErrors: []error{
@@ -105,19 +114,27 @@ func TestFromSlice(t *testing.T) {
 				errors.New("baz"),
 				errors.New("qux"),
 			},
-			wantMessage: "the following errors occurred:\n" +
+			wantMultiline: "the following errors occurred:\n" +
 				" -  foo\n" +
 				" -  bar\n" +
 				" -  baz\n" +
 				" -  qux",
+			wantSingleline: "foo; bar; baz; qux",
 		},
 	}
 
 	for i, tt := range tests {
 		t.Run(fmt.Sprint(i), func(t *testing.T) {
 			err := FromSlice(tt.giveErrors)
-			if assert.Equal(t, tt.wantError, err) && tt.wantMessage != "" {
-				assert.Equal(t, tt.wantMessage, err.Error())
+			require.Equal(t, tt.wantError, err)
+
+			if tt.wantMultiline != "" {
+				assert.Equal(t, tt.wantMultiline, fmt.Sprintf("%+v", err))
+			}
+
+			if tt.wantSingleline != "" {
+				assert.Equal(t, tt.wantSingleline, err.Error())
+				assert.Equal(t, tt.wantSingleline, fmt.Sprintf("%v", err))
 			}
 		})
 	}

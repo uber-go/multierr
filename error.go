@@ -22,20 +22,41 @@ package multierr
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"strings"
 	"sync"
 )
 
-const (
-	// Amount of space we reserve in a slice when flattening nested errorGroups.
-	_errorBuffer = 8
+// Amount of space we reserve in a slice when flattening nested errorGroups.
+const _errorBuffer = 8
 
-	// Prefix for multiError messages
-	_prefix = "the following errors occurred:"
+var (
+	// Separator for single-line error messages.
+	_singlelineSeparator = []byte("; ")
+
+	_newline = []byte("\n")
+
+	// Prefix for multi-line messages
+	_prefix = []byte("the following errors occurred:")
+
+	// Prefix for the first and following lines of an item in a list of
+	// multi-line error messages.
+	//
+	// For example, if a single item is:
+	//
+	// 	foo
+	// 	bar
+	//
+	// It will become,
+	//
+	// 	 -  foo
+	// 	    bar
+	_listDash   = []byte(" -  ")
+	_listIndent = []byte("    ")
 )
 
-// _bufferPool is a pool of bytes.Buffer objects
+// _bufferPool is a pool of bytes.Buffers.
 var _bufferPool = sync.Pool{
 	New: func() interface{} {
 		return &bytes.Buffer{}
@@ -60,30 +81,72 @@ func (me multiError) Causes() []error {
 }
 
 func (me multiError) Error() string {
-	errLineIndent := strings.Repeat(" ", 4)
-
 	buff := _bufferPool.Get().(*bytes.Buffer)
 	buff.Reset()
 
-	buff.WriteString(_prefix)
-	for _, err := range me {
-		buff.WriteString("\n -  ")
-		writeWithPrefix(buff, errLineIndent, err.Error())
-	}
+	me.writeSingleline(buff)
 
 	result := buff.String()
 	_bufferPool.Put(buff)
 	return result
 }
 
+func (me multiError) Format(f fmt.State, c rune) {
+	if c == 'v' && f.Flag('+') {
+		me.writeMultiline(f)
+	} else {
+		me.writeSingleline(f)
+	}
+}
+
+func (me multiError) writeSingleline(w io.Writer) error {
+	first := true
+	for _, item := range me {
+		if first {
+			first = false
+		} else {
+			if _, err := w.Write(_singlelineSeparator); err != nil {
+				return err
+			}
+		}
+
+		if _, err := io.WriteString(w, item.Error()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (me multiError) writeMultiline(w io.Writer) error {
+	if _, err := w.Write(_prefix); err != nil {
+		return err
+	}
+
+	for _, item := range me {
+		if _, err := w.Write(_newline); err != nil {
+			return err
+		}
+
+		if _, err := w.Write(_listDash); err != nil {
+			return err
+		}
+
+		if err := writeWithPrefix(w, _listIndent, item.Error()); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // Writes s to the writer with the given prefix added before each line after
 // the first.
-func writeWithPrefix(w io.Writer, prefix, s string) error {
+func writeWithPrefix(w io.Writer, prefix []byte, s string) error {
 	first := true
 	for len(s) > 0 {
 		if first {
 			first = false
-		} else if _, err := io.WriteString(w, prefix); err != nil {
+		} else if _, err := w.Write(prefix); err != nil {
 			return err
 		}
 
@@ -173,6 +236,12 @@ func flattenTo(dest, src []error) []error {
 // 	type ErrorGroup interface {
 // 		Causes() []error
 // 	}
+//
+// If multiple errors were found, the error returned by this function will
+// result in a multi-line message if "%+v" is used with fmt.Printf and
+// friends.
+//
+// 	fmt.Sprintf("%+v", multierr.FromSlice(errors))
 func FromSlice(errors []error) error {
 	errors = flatten(errors)
 	switch len(errors) {
@@ -222,6 +291,7 @@ func Append(dest error, err error) error {
 	case err == nil:
 		return dest
 	}
+
 	errors := [2]error{dest, err}
 	return FromSlice(errors[0:])
 }
