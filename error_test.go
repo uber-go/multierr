@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFromSlice(t *testing.T) {
+func TestCombine(t *testing.T) {
 	tests := []struct {
 		giveErrors     []error
 		wantError      error
@@ -17,8 +17,46 @@ func TestFromSlice(t *testing.T) {
 		wantSingleline string
 	}{
 		{
+			giveErrors: nil,
+			wantError:  nil,
+		},
+		{
 			giveErrors: []error{},
 			wantError:  nil,
+		},
+		{
+			giveErrors: []error{
+				errors.New("foo"),
+				nil,
+				multiError{
+					errors.New("bar"),
+				},
+				nil,
+			},
+			wantError: multiError{
+				errors.New("foo"),
+				errors.New("bar"),
+			},
+			wantMultiline: "the following errors occurred:\n" +
+				" -  foo\n" +
+				" -  bar",
+			wantSingleline: "foo; bar",
+		},
+		{
+			giveErrors: []error{
+				errors.New("foo"),
+				multiError{
+					errors.New("bar"),
+				},
+			},
+			wantError: multiError{
+				errors.New("foo"),
+				errors.New("bar"),
+			},
+			wantMultiline: "the following errors occurred:\n" +
+				" -  foo\n" +
+				" -  bar",
+			wantSingleline: "foo; bar",
 		},
 		{
 			giveErrors:     []error{errors.New("great sadness")},
@@ -121,7 +159,7 @@ func TestFromSlice(t *testing.T) {
 
 	for i, tt := range tests {
 		t.Run(fmt.Sprint(i), func(t *testing.T) {
-			err := FromSlice(tt.giveErrors)
+			err := Combine(tt.giveErrors...)
 			require.Equal(t, tt.wantError, err)
 
 			if tt.wantMultiline != "" {
@@ -139,54 +177,16 @@ func TestFromSlice(t *testing.T) {
 	}
 }
 
-func TestFromSliceDoesNotModifySlice(t *testing.T) {
+func TestCombineDoesNotModifySlice(t *testing.T) {
 	errors := []error{
 		errors.New("foo"),
 		nil,
 		errors.New("bar"),
 	}
 
-	assert.NotNil(t, FromSlice(errors))
+	assert.NotNil(t, Combine(errors...))
 	assert.Len(t, errors, 3)
 	assert.Nil(t, errors[1], 3)
-}
-
-func TestCombine(t *testing.T) {
-	tests := []struct {
-		give []error
-		want error
-	}{
-		{
-			give: []error{
-				errors.New("foo"),
-				nil,
-				multiError{
-					errors.New("bar"),
-				},
-				nil,
-			},
-			want: multiError{
-				errors.New("foo"),
-				errors.New("bar"),
-			},
-		},
-		{
-			give: []error{
-				errors.New("foo"),
-				multiError{
-					errors.New("bar"),
-				},
-			},
-			want: multiError{
-				errors.New("foo"),
-				errors.New("bar"),
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		assert.Equal(t, tt.want, Combine(tt.give...))
-	}
 }
 
 func TestAppend(t *testing.T) {

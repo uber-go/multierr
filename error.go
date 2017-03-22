@@ -204,33 +204,37 @@ func fromSlice(errors []error) error {
 	return me
 }
 
-// FromSlice combines a slice of errors into a single error. If the list is
-// empty or all the errors in it are nil, a nil error is returned. If the list
-// contains only a single error, the error is returned as-is.
+// Combine combines the passed errors into a single error.
 //
-// If an error in the list is a multierr error, it will be flattened along
-// with the other errors.
+// If zero arguments were passed or if all items are nil, a nil error is
+// returned.
 //
-// If multiple errors were found, the error returned by this function will
-// result in a multi-line message if "%+v" is used with fmt.Printf and
-// friends.
+// 	Combine(nil, nil)  // == nil
 //
-// 	fmt.Sprintf("%+v", multierr.FromSlice(errors))
-func FromSlice(errors []error) error {
-	return fromSlice(errors)
-}
-
-// Combine combines the given collection of errors together. nil values will
-// be ignored.
+// If only a single error was passed, it is returned as-is.
 //
-// This may be used to combine errors together from operations that may fail
-// independently.
+// 	Combine(err)  // == err
+//
+// Combine skips over nil arguments so this function may be used to combine
+// together errors from operations that fail independently of each other.
 //
 // 	multierr.Combine(
 // 		reader.Close(),
 // 		writer.Close(),
 // 		pipe.Close(),
 // 	)
+//
+// If any of the passed errors is a multierr error, it will be flattened along
+// with the other errors.
+//
+// 	multierr.Combine(multierr.Combine(err1, err2), err3)
+// 	// is the same as
+// 	multierr.Combine(err1, err2, err3)
+//
+// The returned error formats into a readable multi-line error message if
+// formatted with %+v.
+//
+// 	fmt.Sprintf("%+v", multierr.Combine(err1, err2))
 func Combine(errors ...error) error {
 	return fromSlice(errors)
 }
