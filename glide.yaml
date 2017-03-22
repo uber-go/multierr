@@ -1,6 +1,3 @@
 package: go.uber.org/multierr
 import: []
-testImport:
-- package: github.com/stretchr/testify
-  subpackages:
-  - assert
+testImport: []
