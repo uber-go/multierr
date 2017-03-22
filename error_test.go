@@ -3,26 +3,11 @@ package multierr
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-type myErrorGroup []error
-
-func (e myErrorGroup) Error() string {
-	messages := make([]string, len(e))
-	for i, err := range e {
-		messages[i] = err.Error()
-	}
-	return strings.Join(messages, "\n")
-}
-
-func (e myErrorGroup) Causes() []error {
-	return e
-}
 
 func TestFromSlice(t *testing.T) {
 	tests := []struct {
@@ -81,7 +66,6 @@ func TestFromSlice(t *testing.T) {
 				errors.New("foo"),
 				multiError{
 					errors.New("bar"),
-					nil,
 					errors.New("baz"),
 				},
 				errors.New("qux"),
@@ -102,24 +86,36 @@ func TestFromSlice(t *testing.T) {
 		{
 			giveErrors: []error{
 				errors.New("foo"),
-				myErrorGroup{
+				nil,
+				multiError{
 					errors.New("bar"),
-					errors.New("baz"),
 				},
-				errors.New("qux"),
+				nil,
 			},
 			wantError: multiError{
 				errors.New("foo"),
 				errors.New("bar"),
-				errors.New("baz"),
-				errors.New("qux"),
 			},
 			wantMultiline: "the following errors occurred:\n" +
 				" -  foo\n" +
-				" -  bar\n" +
-				" -  baz\n" +
-				" -  qux",
-			wantSingleline: "foo; bar; baz; qux",
+				" -  bar",
+			wantSingleline: "foo; bar",
+		},
+		{
+			giveErrors: []error{
+				errors.New("foo"),
+				multiError{
+					errors.New("bar"),
+				},
+			},
+			wantError: multiError{
+				errors.New("foo"),
+				errors.New("bar"),
+			},
+			wantMultiline: "the following errors occurred:\n" +
+				" -  foo\n" +
+				" -  bar",
+			wantSingleline: "foo; bar",
 		},
 	}
 
@@ -134,10 +130,25 @@ func TestFromSlice(t *testing.T) {
 
 			if tt.wantSingleline != "" {
 				assert.Equal(t, tt.wantSingleline, err.Error())
+				if s, ok := err.(fmt.Stringer); ok {
+					assert.Equal(t, tt.wantSingleline, s.String())
+				}
 				assert.Equal(t, tt.wantSingleline, fmt.Sprintf("%v", err))
 			}
 		})
 	}
+}
+
+func TestFromSliceDoesNotModifySlice(t *testing.T) {
+	errors := []error{
+		errors.New("foo"),
+		nil,
+		errors.New("bar"),
+	}
+
+	assert.NotNil(t, FromSlice(errors))
+	assert.Len(t, errors, 3)
+	assert.Nil(t, errors[1], 3)
 }
 
 func TestCombine(t *testing.T) {
@@ -153,6 +164,18 @@ func TestCombine(t *testing.T) {
 					errors.New("bar"),
 				},
 				nil,
+			},
+			want: multiError{
+				errors.New("foo"),
+				errors.New("bar"),
+			},
+		},
+		{
+			give: []error{
+				errors.New("foo"),
+				multiError{
+					errors.New("bar"),
+				},
 			},
 			want: multiError{
 				errors.New("foo"),
@@ -215,6 +238,18 @@ func TestAppend(t *testing.T) {
 			},
 			want: multiError{
 				errors.New("baz"),
+				errors.New("foo"),
+				errors.New("bar"),
+			},
+		},
+		{
+			left: multiError{
+				errors.New("foo"),
+			},
+			right: multiError{
+				errors.New("bar"),
+			},
+			want: multiError{
 				errors.New("foo"),
 				errors.New("bar"),
 			},

@@ -28,9 +28,6 @@ import (
 	"sync"
 )
 
-// Amount of space we reserve in a slice when flattening nested errorGroups.
-const _errorBuffer = 8
-
 var (
 	// Separator for single-line error messages.
 	_singlelineSeparator = []byte("; ")
@@ -38,7 +35,7 @@ var (
 	_newline = []byte("\n")
 
 	// Prefix for multi-line messages
-	_prefix = []byte("the following errors occurred:")
+	_multilinePrefix = []byte("the following errors occurred:")
 
 	// Prefix for the first and following lines of an item in a list of
 	// multi-line error messages.
@@ -63,21 +60,17 @@ var _bufferPool = sync.Pool{
 	},
 }
 
-// errorGroup is an interface implemented by any error type which combines one
-// or more errors.
-type errorGroup interface {
-	// Causes returns the list of errors that are wrapped by this ErrorGroup.
-	Causes() []error
-}
-
+// multiError is an error that holds one or more errors.
+//
+// An instance of this is guaranteed to be non-empty and flattened. That is,
+// none of the errors inside multiError are other multiErrors.
+//
+// multiError formats to a semi-colon delimited list of error messages with
+// %v and with a more readable multi-line format with %+v.
 type multiError []error
 
 func (me multiError) String() string {
 	return me.Error()
-}
-
-func (me multiError) Causes() []error {
-	return []error(me)
 }
 
 func (me multiError) Error() string {
@@ -99,55 +92,36 @@ func (me multiError) Format(f fmt.State, c rune) {
 	}
 }
 
-func (me multiError) writeSingleline(w io.Writer) error {
+func (me multiError) writeSingleline(w io.Writer) {
 	first := true
 	for _, item := range me {
 		if first {
 			first = false
 		} else {
-			if _, err := w.Write(_singlelineSeparator); err != nil {
-				return err
-			}
+			w.Write(_singlelineSeparator)
 		}
-
-		if _, err := io.WriteString(w, item.Error()); err != nil {
-			return err
-		}
+		io.WriteString(w, item.Error())
 	}
-	return nil
 }
 
-func (me multiError) writeMultiline(w io.Writer) error {
-	if _, err := w.Write(_prefix); err != nil {
-		return err
-	}
-
+func (me multiError) writeMultiline(w io.Writer) {
+	w.Write(_multilinePrefix)
 	for _, item := range me {
-		if _, err := w.Write(_newline); err != nil {
-			return err
-		}
-
-		if _, err := w.Write(_listDash); err != nil {
-			return err
-		}
-
-		if err := writeWithPrefix(w, _listIndent, item.Error()); err != nil {
-			return err
-		}
+		w.Write(_newline)
+		w.Write(_listDash)
+		writePrefixLine(w, _listIndent, item.Error())
 	}
-
-	return nil
 }
 
 // Writes s to the writer with the given prefix added before each line after
 // the first.
-func writeWithPrefix(w io.Writer, prefix []byte, s string) error {
+func writePrefixLine(w io.Writer, prefix []byte, s string) {
 	first := true
 	for len(s) > 0 {
 		if first {
 			first = false
-		} else if _, err := w.Write(prefix); err != nil {
-			return err
+		} else {
+			w.Write(prefix)
 		}
 
 		idx := strings.IndexByte(s, '\n')
@@ -155,87 +129,88 @@ func writeWithPrefix(w io.Writer, prefix []byte, s string) error {
 			idx = len(s) - 1
 		}
 
-		if _, err := io.WriteString(w, s[:idx+1]); err != nil {
-			return err
-		}
-
+		io.WriteString(w, s[:idx+1])
 		s = s[idx+1:]
 	}
-	return nil
 }
 
-// flatten flattens nested errorGroups into a single list of errors.
-func flatten(errors []error) []error {
-	errors = filterNil(errors)
-	if len(errors) == 0 {
-		return nil
-	}
+type inspectResult struct {
+	// Number of top-level non-nil errors
+	Count int
 
-	// zero-alloc path: no nested errors
-	idx := findFirstErrorGroup(errors)
-	if idx < 0 {
-		return errors
-	}
+	// Total number of errors including multiErrors
+	Capacity int
 
-	// If an errorGroup was found, we need to write to a new list
-	newErrors := make([]error, 0, len(errors)+_errorBuffer)
-	newErrors = append(newErrors, errors[:idx]...)
-	return flattenTo(newErrors, errors[idx:])
+	// Index of the first non-nil error in the list. Value is meaningless if
+	// Count is zero.
+	FirstErrorIdx int
+
+	// Whether the list contains at least one multiError
+	ContainsMultiError bool
 }
 
-// filterNil removes nil errors from the given slice.
-func filterNil(errors []error) []error {
-	// zero-alloc filtering
-	newErrors := errors[:0]
-	for _, err := range errors {
-		if err != nil {
-			newErrors = append(newErrors, err)
-		}
-	}
-	return newErrors
-}
-
-// Finds the first index in the given slice where an errorGroup was found
-// instead of an error.
-//
-// -1 is returned if none of the errors were an errorGroup.
-func findFirstErrorGroup(errors []error) int {
+// Inspects the given slice of errors so that we can efficiently allocate
+// space for it.
+func inspect(errors []error) (res inspectResult) {
+	first := true
 	for i, err := range errors {
-		if _, ok := err.(errorGroup); ok {
-			return i
-		}
-	}
-	return -1
-}
-
-// flattenTo flattens the src list of errors by appending to dest. Returns the
-// final dest list.
-func flattenTo(dest, src []error) []error {
-	for _, err := range src {
 		if err == nil {
 			continue
 		}
-		if e, ok := err.(errorGroup); ok {
-			dest = flattenTo(dest, e.Causes())
+
+		res.Count++
+		if first {
+			first = false
+			res.FirstErrorIdx = i
+		}
+
+		if me, ok := err.(multiError); ok {
+			res.Capacity += len(me)
+			res.ContainsMultiError = true
 		} else {
-			dest = append(dest, err)
+			res.Capacity++
 		}
 	}
-	return dest
+	return
+}
+
+// fromSlice converts the given list of errors into a single error.
+func fromSlice(errors []error) error {
+	res := inspect(errors)
+	switch res.Count {
+	case 0:
+		return nil
+	case 1:
+		// only one non-nil entry
+		return errors[res.FirstErrorIdx]
+	case len(errors):
+		if !res.ContainsMultiError {
+			// already flat
+			return multiError(errors)
+		}
+	}
+
+	me := make(multiError, 0, res.Capacity)
+	for _, err := range errors[res.FirstErrorIdx:] {
+		if err == nil {
+			continue
+		}
+
+		if nested, ok := err.(multiError); ok {
+			me = append(me, nested...)
+		} else {
+			me = append(me, err)
+		}
+	}
+	return me
 }
 
 // FromSlice combines a slice of errors into a single error. If the list is
 // empty or all the errors in it are nil, a nil error is returned. If the list
 // contains only a single error, the error is returned as-is.
 //
-// If an error in the list satisfies the following interface, it is squashed
-// away and errors from it are flattened. This also applies to errors found
-// nested inside other
-// ErrorGroups.
-//
-// 	type ErrorGroup interface {
-// 		Causes() []error
-// 	}
+// If an error in the list is a multierr error, it will be flattened along
+// with the other errors.
 //
 // If multiple errors were found, the error returned by this function will
 // result in a multi-line message if "%+v" is used with fmt.Printf and
@@ -243,14 +218,7 @@ func flattenTo(dest, src []error) []error {
 //
 // 	fmt.Sprintf("%+v", multierr.FromSlice(errors))
 func FromSlice(errors []error) error {
-	errors = flatten(errors)
-	switch len(errors) {
-	case 0:
-		return nil
-	case 1:
-		return errors[0]
-	}
-	return multiError(errors)
+	return fromSlice(errors)
 }
 
 // Combine combines the given collection of errors together. nil values will
@@ -265,11 +233,10 @@ func FromSlice(errors []error) error {
 // 		pipe.Close(),
 // 	)
 func Combine(errors ...error) error {
-	return FromSlice(errors)
+	return fromSlice(errors)
 }
 
-// Append appends the given error to the destination. Either error value may
-// be nil or an ErrorGroup.
+// Append appends the given errors together. Either value may be nil.
 //
 // This function is a specialization of Combine for the common case where
 // there are only two errors.
@@ -284,14 +251,27 @@ func Combine(errors ...error) error {
 // 		defer func() {
 // 			err = multierr.Append(err, f.Close())
 // 		}()
-func Append(dest error, err error) error {
+func Append(left error, right error) error {
 	switch {
-	case dest == nil:
-		return err
-	case err == nil:
-		return dest
+	case left == nil:
+		return right
+	case right == nil:
+		return left
 	}
 
-	errors := [2]error{dest, err}
-	return FromSlice(errors[0:])
+	if _, ok := right.(multiError); !ok {
+		if l, ok := left.(multiError); ok {
+			// Common case where the error on the left is constantly being
+			// appended to.
+			return append(l, right)
+		}
+
+		// Both errors are single errors.
+		return multiError{left, right}
+	}
+
+	// Either right or both, left and right, are multiErrors. Rely on usual
+	// expensive logic.
+	errors := [2]error{left, right}
+	return fromSlice(errors[0:])
 }
