@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package multierr
+package multierr // import "go.uber.org/multierr"
 
 import (
 	"bytes"
