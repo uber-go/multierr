@@ -49,8 +49,8 @@ var (
 	//
 	// 	 -  foo
 	// 	    bar
-	_listDash   = []byte(" -  ")
-	_listIndent = []byte("    ")
+	_multilineSeparator = []byte("\n -  ")
+	_multilineIndent    = []byte("    ")
 )
 
 // _bufferPool is a pool of bytes.Buffers.
@@ -107,9 +107,8 @@ func (me multiError) writeSingleline(w io.Writer) {
 func (me multiError) writeMultiline(w io.Writer) {
 	w.Write(_multilinePrefix)
 	for _, item := range me {
-		w.Write(_newline)
-		w.Write(_listDash)
-		writePrefixLine(w, _listIndent, item.Error())
+		w.Write(_multilineSeparator)
+		writePrefixLine(w, _multilineIndent, item.Error())
 	}
 }
 
