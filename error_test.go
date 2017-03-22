@@ -3,8 +3,10 @@ package multierr
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFromSlice(t *testing.T) {
@@ -120,30 +122,18 @@ func TestFromSlice(t *testing.T) {
 	for i, tt := range tests {
 		t.Run(fmt.Sprint(i), func(t *testing.T) {
 			err := FromSlice(tt.giveErrors)
-			if !reflect.DeepEqual(tt.wantError, err) {
-				t.Fatalf("FromSlice output mismatch:\n\twant: %#v\n\t got: %#v", tt.wantError, err)
-			}
+			require.Equal(t, tt.wantError, err)
 
 			if tt.wantMultiline != "" {
-				if got := fmt.Sprintf("%+v", err); tt.wantMultiline != got {
-					t.Errorf("%%+v output did not match:\n\twant: %q\n\t got: %q", tt.wantMultiline, got)
-				}
+				assert.Equal(t, tt.wantMultiline, fmt.Sprintf("%+v", err))
 			}
 
 			if tt.wantSingleline != "" {
-				if got := err.Error(); tt.wantSingleline != got {
-					t.Errorf("Error() output did not match:\n\twant: %q\n\t got: %q", tt.wantSingleline, got)
-				}
-
+				assert.Equal(t, tt.wantSingleline, err.Error())
 				if s, ok := err.(fmt.Stringer); ok {
-					if got := s.String(); tt.wantSingleline != got {
-						t.Errorf("String() output did not match:\n\twant: %q\n\t got: %q", tt.wantSingleline, got)
-					}
+					assert.Equal(t, tt.wantSingleline, s.String())
 				}
-
-				if got := fmt.Sprintf("%v", err); tt.wantSingleline != got {
-					t.Errorf("%%v output did not match:\n\twant: %q\n\t got: %q", tt.wantSingleline, got)
-				}
+				assert.Equal(t, tt.wantSingleline, fmt.Sprintf("%v", err))
 			}
 		})
 	}
@@ -156,17 +146,9 @@ func TestFromSliceDoesNotModifySlice(t *testing.T) {
 		errors.New("bar"),
 	}
 
-	if FromSlice(errors) == nil {
-		t.Errorf("expected non-nil output from FromSlice")
-	}
-
-	if len(errors) != 3 {
-		t.Errorf("length of errors was changed by FromSlice:\n\twant: 3\n\t got: %d", len(errors))
-	}
-
-	if errors[1] != nil {
-		t.Errorf("expected errors[1] to be nil but got %v", errors[1])
-	}
+	assert.NotNil(t, FromSlice(errors))
+	assert.Len(t, errors, 3)
+	assert.Nil(t, errors[1], 3)
 }
 
 func TestCombine(t *testing.T) {
@@ -203,9 +185,7 @@ func TestCombine(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if err := Combine(tt.give...); !reflect.DeepEqual(tt.want, err) {
-			t.Errorf("Combine output mismatch:\n\twant: %#v\n\t got: %#v", tt.want, err)
-		}
+		assert.Equal(t, tt.want, Combine(tt.give...))
 	}
 }
 
@@ -277,8 +257,6 @@ func TestAppend(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if err := Append(tt.left, tt.right); !reflect.DeepEqual(tt.want, err) {
-			t.Errorf("Append output mismatch:\n\twant: %#v\n\t got: %#v", tt.want, err)
-		}
+		assert.Equal(t, tt.want, Append(tt.left, tt.right))
 	}
 }
