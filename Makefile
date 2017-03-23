@@ -6,10 +6,6 @@ GO_FILES := $(shell \
 	find . '(' -path '*/.*' -o -path './vendor' ')' -prune \
 	-o -name '*.go' -print | cut -b3-)
 
-ERRCHECK_FLAGS ?= -ignoretests
-ERRCHECK_EXCLUDES := \.Close\(\) \.Stop\(\)
-FILTER_ERRCHECK := grep -v $(patsubst %,-e %, $(ERRCHECK_EXCLUDES))
-
 .PHONY: install
 install:
 	glide --version || go get github.com/Masterminds/glide
@@ -51,15 +47,8 @@ staticcheck:
 	@staticcheck $(PACKAGES) 2>&1 > $(STATICCHECK_LOG) || true
 	@[ ! -s "$(STATICCHECK_LOG)" ] || (echo "staticcheck failed:" | cat - $(STATICCHECK_LOG) && false)
 
-.PHONY: errcheck
-errcheck:
-	@go get github.com/kisielk/errcheck
-	$(eval ERRCHECK_LOG := $(shell mktemp -t errcheck.XXXXX))
-	@errcheck $(ERRCHECK_FLAGS) $(PACKAGES) 2>&1 | $(FILTER_ERRCHECK) > $(ERRCHECK_LOG) || true
-	@[ ! -s "$(ERRCHECK_LOG)" ] || (echo "errcheck failed:" | cat - $(ERRCHECK_LOG) && false)
-
 .PHONY: lint
-lint: gofmt govet golint staticcheck errcheck
+lint: gofmt govet golint staticcheck
 
 .PHONY: cover
 cover:
