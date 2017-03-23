@@ -18,6 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+// Package multierr allows combining one or more errors together.
 package multierr // import "go.uber.org/multierr"
 
 import (
@@ -69,32 +70,32 @@ var _bufferPool = sync.Pool{
 // %v and with a more readable multi-line format with %+v.
 type multiError []error
 
-func (me multiError) String() string {
-	return me.Error()
+func (merr multiError) String() string {
+	return merr.Error()
 }
 
-func (me multiError) Error() string {
+func (merr multiError) Error() string {
 	buff := _bufferPool.Get().(*bytes.Buffer)
 	buff.Reset()
 
-	me.writeSingleline(buff)
+	merr.writeSingleline(buff)
 
 	result := buff.String()
 	_bufferPool.Put(buff)
 	return result
 }
 
-func (me multiError) Format(f fmt.State, c rune) {
+func (merr multiError) Format(f fmt.State, c rune) {
 	if c == 'v' && f.Flag('+') {
-		me.writeMultiline(f)
+		merr.writeMultiline(f)
 	} else {
-		me.writeSingleline(f)
+		merr.writeSingleline(f)
 	}
 }
 
-func (me multiError) writeSingleline(w io.Writer) {
+func (merr multiError) writeSingleline(w io.Writer) {
 	first := true
-	for _, item := range me {
+	for _, item := range merr {
 		if first {
 			first = false
 		} else {
@@ -104,9 +105,9 @@ func (me multiError) writeSingleline(w io.Writer) {
 	}
 }
 
-func (me multiError) writeMultiline(w io.Writer) {
+func (merr multiError) writeMultiline(w io.Writer) {
 	w.Write(_multilinePrefix)
-	for _, item := range me {
+	for _, item := range merr {
 		w.Write(_multilineSeparator)
 		writePrefixLine(w, _multilineIndent, item.Error())
 	}
@@ -163,8 +164,8 @@ func inspect(errors []error) (res inspectResult) {
 			res.FirstErrorIdx = i
 		}
 
-		if me, ok := err.(multiError); ok {
-			res.Capacity += len(me)
+		if merr, ok := err.(multiError); ok {
+			res.Capacity += len(merr)
 			res.ContainsMultiError = true
 		} else {
 			res.Capacity++
@@ -189,19 +190,19 @@ func fromSlice(errors []error) error {
 		}
 	}
 
-	me := make(multiError, 0, res.Capacity)
+	merr := make(multiError, 0, res.Capacity)
 	for _, err := range errors[res.FirstErrorIdx:] {
 		if err == nil {
 			continue
 		}
 
 		if nested, ok := err.(multiError); ok {
-			me = append(me, nested...)
+			merr = append(merr, nested...)
 		} else {
-			me = append(me, err)
+			merr = append(merr, err)
 		}
 	}
-	return me
+	return merr
 }
 
 // Combine combines the passed errors into a single error.
