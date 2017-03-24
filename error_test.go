@@ -3,11 +3,28 @@ package multierr
 import (
 	"errors"
 	"fmt"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// richFormatError is an error that prints a different output depending on
+// whether %v or %+v was used.
+type richFormatError struct{}
+
+func (r richFormatError) Error() string {
+	return fmt.Sprint(r)
+}
+
+func (richFormatError) Format(f fmt.State, c rune) {
+	if c == 'v' && f.Flag('+') {
+		io.WriteString(f, "multiline\nmessage\nwith plus")
+	} else {
+		io.WriteString(f, "without plus")
+	}
+}
 
 func TestCombine(t *testing.T) {
 	tests := []struct {
@@ -154,6 +171,25 @@ func TestCombine(t *testing.T) {
 				" -  foo\n" +
 				" -  bar",
 			wantSingleline: "foo; bar",
+		},
+		{
+			giveErrors: []error{
+				errors.New("foo"),
+				richFormatError{},
+				errors.New("bar"),
+			},
+			wantError: multiError{
+				errors.New("foo"),
+				richFormatError{},
+				errors.New("bar"),
+			},
+			wantMultiline: "the following errors occurred:\n" +
+				" -  foo\n" +
+				" -  multiline\n" +
+				"    message\n" +
+				"    with plus\n" +
+				" -  bar",
+			wantSingleline: "foo; without plus; bar",
 		},
 	}
 
