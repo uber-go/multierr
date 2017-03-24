@@ -109,7 +109,7 @@ func (merr multiError) writeMultiline(w io.Writer) {
 	w.Write(_multilinePrefix)
 	for _, item := range merr {
 		w.Write(_multilineSeparator)
-		writePrefixLine(w, _multilineIndent, item.Error())
+		writePrefixLine(w, _multilineIndent, fmt.Sprintf("%+v", item))
 	}
 }
 
