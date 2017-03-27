@@ -26,56 +26,37 @@ import (
 	"testing"
 )
 
-func appendN(initial, err error, n int) error {
-	errs := initial
-	for i := 0; i < n; i++ {
-		errs = Append(errs, err)
-	}
-	return errs
-}
-
 func BenchmarkAppend(b *testing.B) {
-	benchmarks := []struct {
-		msg     string
-		initial error
-		append  error
+	errorTypes := []struct {
+		name string
+		err  error
 	}{
 		{
-			msg:     "append nil to nil",
-			initial: nil,
-			append:  nil,
+			name: "nil",
+			err:  nil,
 		},
 		{
-			msg:     "append err to nil",
-			initial: nil,
-			append:  errors.New("err"),
+			name: "single error",
+			err:  errors.New("test"),
 		},
 		{
-			msg:     "append nil to err",
-			initial: errors.New("initial"),
-			append:  nil,
-		},
-		{
-			msg:     "append err to err",
-			initial: errors.New("initial"),
-			append:  errors.New("err"),
-		},
-		{
-			msg:     "append multierr to multierr",
-			initial: appendN(nil, errors.New("initial"), 10),
-			append:  appendN(nil, errors.New("err"), 10),
+			name: "multiple errors",
+			err:  appendN(nil, errors.New("err"), 10),
 		},
 	}
 
-	for _, bb := range benchmarks {
-		b.Run(bb.msg, func(b *testing.B) {
-			for _, appends := range []int{1, 2, 10} {
-				b.Run(fmt.Sprint(appends), func(b *testing.B) {
-					for i := 0; i < b.N; i++ {
-						appendN(bb.initial, bb.append, appends)
-					}
-				})
-			}
-		})
+	for _, initial := range errorTypes {
+		for _, v := range errorTypes {
+			msg := fmt.Sprintf("append %v to %v", v.name, initial.name)
+			b.Run(msg, func(b *testing.B) {
+				for _, appends := range []int{1, 2, 10} {
+					b.Run(fmt.Sprint(appends), func(b *testing.B) {
+						for i := 0; i < b.N; i++ {
+							appendN(initial.err, v.err, appends)
+						}
+					})
+				}
+			})
+		}
 	}
 }
