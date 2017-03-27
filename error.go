@@ -264,14 +264,10 @@ func Append(left error, right error) error {
 	}
 
 	if _, ok := right.(multiError); !ok {
-		if l, ok := left.(multiError); ok {
-			// Common case where the error on the left is constantly being
-			// appended to.
-			return append(l, right)
+		if _, ok := left.(multiError); !ok {
+			// Both errors are single errors.
+			return multiError{left, right}
 		}
-
-		// Both errors are single errors.
-		return multiError{left, right}
 	}
 
 	// Either right or both, left and right, are multiErrors. Rely on usual

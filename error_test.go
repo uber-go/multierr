@@ -26,6 +26,14 @@ func (richFormatError) Format(f fmt.State, c rune) {
 	}
 }
 
+func appendN(initial, err error, n int) error {
+	errs := initial
+	for i := 0; i < n; i++ {
+		errs = Append(errs, err)
+	}
+	return errs
+}
+
 func TestCombine(t *testing.T) {
 	tests := []struct {
 		giveErrors     []error
@@ -295,4 +303,22 @@ func TestAppend(t *testing.T) {
 	for _, tt := range tests {
 		assert.Equal(t, tt.want, Append(tt.left, tt.right))
 	}
+}
+
+func TestAppendDoesNotModify(t *testing.T) {
+	createInitial := func() error {
+		// Create a multiError that has capacity for more errors so Append will
+		// modify the underlying array that may be shared.
+		return appendN(nil, errors.New("initial"), 50)
+	}
+
+	initial := createInitial()
+	err1 := Append(initial, errors.New("err1"))
+	err2 := Append(initial, errors.New("err2"))
+
+	// initial should not have been modified.
+	assert.Equal(t, createInitial(), initial, "Initial should not be modified")
+
+	assert.Equal(t, Append(createInitial(), errors.New("err1")), err1)
+	assert.Equal(t, Append(createInitial(), errors.New("err2")), err2)
 }
