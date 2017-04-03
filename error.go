@@ -27,6 +27,8 @@ import (
 	"io"
 	"strings"
 	"sync"
+
+	"go.uber.org/atomic"
 )
 
 var (
@@ -68,13 +70,16 @@ var _bufferPool = sync.Pool{
 //
 // multiError formats to a semi-colon delimited list of error messages with
 // %v and with a more readable multi-line format with %+v.
-type multiError []error
-
-func (merr multiError) String() string {
-	return merr.Error()
+type multiError struct {
+	copyNeeded atomic.Bool
+	errors     []error
 }
 
-func (merr multiError) Error() string {
+// func (merr *multiError) String() string {
+// 	return merr.Error()
+// }
+
+func (merr *multiError) Error() string {
 	buff := _bufferPool.Get().(*bytes.Buffer)
 	buff.Reset()
 
@@ -85,7 +90,7 @@ func (merr multiError) Error() string {
 	return result
 }
 
-func (merr multiError) Format(f fmt.State, c rune) {
+func (merr *multiError) Format(f fmt.State, c rune) {
 	if c == 'v' && f.Flag('+') {
 		merr.writeMultiline(f)
 	} else {
@@ -93,9 +98,9 @@ func (merr multiError) Format(f fmt.State, c rune) {
 	}
 }
 
-func (merr multiError) writeSingleline(w io.Writer) {
+func (merr *multiError) writeSingleline(w io.Writer) {
 	first := true
-	for _, item := range merr {
+	for _, item := range merr.errors {
 		if first {
 			first = false
 		} else {
@@ -107,7 +112,7 @@ func (merr multiError) writeSingleline(w io.Writer) {
 
 func (merr multiError) writeMultiline(w io.Writer) {
 	w.Write(_multilinePrefix)
-	for _, item := range merr {
+	for _, item := range merr.errors {
 		w.Write(_multilineSeparator)
 		writePrefixLine(w, _multilineIndent, fmt.Sprintf("%+v", item))
 	}
@@ -164,8 +169,8 @@ func inspect(errors []error) (res inspectResult) {
 			res.FirstErrorIdx = i
 		}
 
-		if merr, ok := err.(multiError); ok {
-			res.Capacity += len(merr)
+		if merr, ok := err.(*multiError); ok {
+			res.Capacity += len(merr.errors)
 			res.ContainsMultiError = true
 		} else {
 			res.Capacity++
@@ -186,23 +191,24 @@ func fromSlice(errors []error) error {
 	case len(errors):
 		if !res.ContainsMultiError {
 			// already flat
-			return multiError(errors)
+			return &multiError{errors: errors}
 		}
 	}
 
-	merr := make(multiError, 0, res.Capacity)
+	nonNilErrs := make([]error, 0, res.Capacity)
 	for _, err := range errors[res.FirstErrorIdx:] {
 		if err == nil {
 			continue
 		}
 
-		if nested, ok := err.(multiError); ok {
-			merr = append(merr, nested...)
+		if nested, ok := err.(*multiError); ok {
+			nonNilErrs = append(nonNilErrs, nested.errors...)
 		} else {
-			merr = append(merr, err)
+			nonNilErrs = append(nonNilErrs, err)
 		}
 	}
-	return merr
+
+	return &multiError{errors: nonNilErrs}
 }
 
 // Combine combines the passed errors into a single error.
@@ -263,10 +269,15 @@ func Append(left error, right error) error {
 		return left
 	}
 
-	if _, ok := right.(multiError); !ok {
-		if _, ok := left.(multiError); !ok {
+	if _, ok := right.(*multiError); !ok {
+		if l, ok := left.(*multiError); ok && !l.copyNeeded.Swap(true) {
+			// Common case where the error on the left is constantly being
+			// appended to.
+			errs := append(l.errors, right)
+			return &multiError{errors: errs}
+		} else if !ok {
 			// Both errors are single errors.
-			return multiError{left, right}
+			return &multiError{errors: []error{left, right}}
 		}
 	}
 

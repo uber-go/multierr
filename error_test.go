@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -54,6 +55,10 @@ func appendN(initial, err error, n int) error {
 	return errs
 }
 
+func newMultiErr(errors ...error) error {
+	return &multiError{errors: errors}
+}
+
 func TestCombine(t *testing.T) {
 	tests := []struct {
 		giveErrors     []error
@@ -73,15 +78,15 @@ func TestCombine(t *testing.T) {
 			giveErrors: []error{
 				errors.New("foo"),
 				nil,
-				multiError{
+				newMultiErr(
 					errors.New("bar"),
-				},
+				),
 				nil,
 			},
-			wantError: multiError{
+			wantError: newMultiErr(
 				errors.New("foo"),
 				errors.New("bar"),
-			},
+			),
 			wantMultiline: "the following errors occurred:\n" +
 				" -  foo\n" +
 				" -  bar",
@@ -90,14 +95,14 @@ func TestCombine(t *testing.T) {
 		{
 			giveErrors: []error{
 				errors.New("foo"),
-				multiError{
+				newMultiErr(
 					errors.New("bar"),
-				},
+				),
 			},
-			wantError: multiError{
+			wantError: newMultiErr(
 				errors.New("foo"),
 				errors.New("bar"),
-			},
+			),
 			wantMultiline: "the following errors occurred:\n" +
 				" -  foo\n" +
 				" -  bar",
@@ -114,10 +119,10 @@ func TestCombine(t *testing.T) {
 				errors.New("foo"),
 				errors.New("bar"),
 			},
-			wantError: multiError{
+			wantError: newMultiErr(
 				errors.New("foo"),
 				errors.New("bar"),
-			},
+			),
 			wantMultiline: "the following errors occurred:\n" +
 				" -  foo\n" +
 				" -  bar",
@@ -129,11 +134,11 @@ func TestCombine(t *testing.T) {
 				errors.New("multi\n  line\nerror message"),
 				errors.New("single line error message"),
 			},
-			wantError: multiError{
+			wantError: newMultiErr(
 				errors.New("great sadness"),
 				errors.New("multi\n  line\nerror message"),
 				errors.New("single line error message"),
-			},
+			),
 			wantMultiline: "the following errors occurred:\n" +
 				" -  great sadness\n" +
 				" -  multi\n" +
@@ -147,18 +152,18 @@ func TestCombine(t *testing.T) {
 		{
 			giveErrors: []error{
 				errors.New("foo"),
-				multiError{
+				newMultiErr(
 					errors.New("bar"),
 					errors.New("baz"),
-				},
+				),
 				errors.New("qux"),
 			},
-			wantError: multiError{
+			wantError: newMultiErr(
 				errors.New("foo"),
 				errors.New("bar"),
 				errors.New("baz"),
 				errors.New("qux"),
-			},
+			),
 			wantMultiline: "the following errors occurred:\n" +
 				" -  foo\n" +
 				" -  bar\n" +
@@ -170,15 +175,15 @@ func TestCombine(t *testing.T) {
 			giveErrors: []error{
 				errors.New("foo"),
 				nil,
-				multiError{
+				newMultiErr(
 					errors.New("bar"),
-				},
+				),
 				nil,
 			},
-			wantError: multiError{
+			wantError: newMultiErr(
 				errors.New("foo"),
 				errors.New("bar"),
-			},
+			),
 			wantMultiline: "the following errors occurred:\n" +
 				" -  foo\n" +
 				" -  bar",
@@ -187,14 +192,14 @@ func TestCombine(t *testing.T) {
 		{
 			giveErrors: []error{
 				errors.New("foo"),
-				multiError{
+				newMultiErr(
 					errors.New("bar"),
-				},
+				),
 			},
-			wantError: multiError{
+			wantError: newMultiErr(
 				errors.New("foo"),
 				errors.New("bar"),
-			},
+			),
 			wantMultiline: "the following errors occurred:\n" +
 				" -  foo\n" +
 				" -  bar",
@@ -206,11 +211,11 @@ func TestCombine(t *testing.T) {
 				richFormatError{},
 				errors.New("bar"),
 			},
-			wantError: multiError{
+			wantError: newMultiErr(
 				errors.New("foo"),
 				richFormatError{},
 				errors.New("bar"),
-			},
+			),
 			wantMultiline: "the following errors occurred:\n" +
 				" -  foo\n" +
 				" -  multiline\n" +
@@ -277,46 +282,46 @@ func TestAppend(t *testing.T) {
 		{
 			left:  errors.New("foo"),
 			right: errors.New("bar"),
-			want: multiError{
+			want: newMultiErr(
 				errors.New("foo"),
 				errors.New("bar"),
-			},
+			),
 		},
 		{
-			left: multiError{
+			left: newMultiErr(
 				errors.New("foo"),
 				errors.New("bar"),
-			},
+			),
 			right: errors.New("baz"),
-			want: multiError{
+			want: newMultiErr(
 				errors.New("foo"),
 				errors.New("bar"),
 				errors.New("baz"),
-			},
+			),
 		},
 		{
 			left: errors.New("baz"),
-			right: multiError{
+			right: newMultiErr(
 				errors.New("foo"),
 				errors.New("bar"),
-			},
-			want: multiError{
+			),
+			want: newMultiErr(
 				errors.New("baz"),
 				errors.New("foo"),
 				errors.New("bar"),
-			},
+			),
 		},
 		{
-			left: multiError{
+			left: newMultiErr(
 				errors.New("foo"),
-			},
-			right: multiError{
+			),
+			right: newMultiErr(
 				errors.New("bar"),
-			},
-			want: multiError{
+			),
+			want: newMultiErr(
 				errors.New("foo"),
 				errors.New("bar"),
-			},
+			),
 		},
 	}
 
@@ -325,20 +330,40 @@ func TestAppend(t *testing.T) {
 	}
 }
 
-func TestAppendDoesNotModify(t *testing.T) {
-	createInitial := func() error {
-		// Create a multiError that has capacity for more errors so Append will
-		// modify the underlying array that may be shared.
-		return appendN(nil, errors.New("initial"), 50)
-	}
+func createMultiErrWithCapacity() error {
+	// Create a multiError that has capacity for more errors so Append will
+	// modify the underlying array that may be shared.
+	return appendN(nil, errors.New("initial"), 50)
+}
 
-	initial := createInitial()
+func TestAppendDoesNotModify(t *testing.T) {
+	initial := createMultiErrWithCapacity()
 	err1 := Append(initial, errors.New("err1"))
 	err2 := Append(initial, errors.New("err2"))
 
-	// initial should not have been modified.
-	assert.Equal(t, createInitial(), initial, "Initial should not be modified")
+	// Make sure the error messages match, since we do modify the copyNeeded
+	// atomic, the values cannot be compared.
+	assert.Equal(t, createMultiErrWithCapacity().Error(), initial.Error(), "Initial should not be modified")
 
-	assert.Equal(t, Append(createInitial(), errors.New("err1")), err1)
-	assert.Equal(t, Append(createInitial(), errors.New("err2")), err2)
+	assert.Equal(t, Append(createMultiErrWithCapacity(), errors.New("err1")), err1)
+	assert.Equal(t, Append(createMultiErrWithCapacity(), errors.New("err2")), err2)
+}
+
+func TestAppendRace(t *testing.T) {
+	initial := createMultiErrWithCapacity()
+
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			err := initial
+			for j := 0; j < 10; j++ {
+				err = Append(err, errors.New("err"))
+			}
+		}()
+	}
+
+	wg.Wait()
 }
