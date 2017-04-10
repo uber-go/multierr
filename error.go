@@ -75,10 +75,6 @@ type multiError struct {
 	errors     []error
 }
 
-// func (merr *multiError) String() string {
-// 	return merr.Error()
-// }
-
 func (merr *multiError) Error() string {
 	buff := _bufferPool.Get().(*bytes.Buffer)
 	buff.Reset()
