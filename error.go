@@ -106,7 +106,7 @@ func (merr *multiError) writeSingleline(w io.Writer) {
 	}
 }
 
-func (merr multiError) writeMultiline(w io.Writer) {
+func (merr *multiError) writeMultiline(w io.Writer) {
 	w.Write(_multilinePrefix)
 	for _, item := range merr.errors {
 		w.Write(_multilineSeparator)
