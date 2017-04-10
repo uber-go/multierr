@@ -343,10 +343,10 @@ func TestAppendDoesNotModify(t *testing.T) {
 
 	// Make sure the error messages match, since we do modify the copyNeeded
 	// atomic, the values cannot be compared.
-	assert.Equal(t, createMultiErrWithCapacity().Error(), initial.Error(), "Initial should not be modified")
+	assert.EqualError(t, initial, createMultiErrWithCapacity().Error(), "Initial should not be modified")
 
-	assert.Equal(t, Append(createMultiErrWithCapacity(), errors.New("err1")), err1)
-	assert.Equal(t, Append(createMultiErrWithCapacity(), errors.New("err2")), err2)
+	assert.EqualError(t, err1, Append(createMultiErrWithCapacity(), errors.New("err1")).Error())
+	assert.EqualError(t, err2, Append(createMultiErrWithCapacity(), errors.New("err2")).Error())
 }
 
 func TestAppendRace(t *testing.T) {
