@@ -333,7 +333,7 @@ func TestAppend(t *testing.T) {
 func createMultiErrWithCapacity() error {
 	// Create a multiError that has capacity for more errors so Append will
 	// modify the underlying array that may be shared.
-	return appendN(nil, errors.New("initial"), 50)
+	return appendN(nil, errors.New("append"), 50)
 }
 
 func TestAppendDoesNotModify(t *testing.T) {
