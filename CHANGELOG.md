@@ -1,7 +1,7 @@
 Releases
 ========
 
-v0.2.0 (unreleased)
+v0.2.0 (2017-04-11)
 ===================
 
 -   Repeatedly appending to the same error is now faster due to fewer
