@@ -29,4 +29,5 @@ script:
   make lint
   make test_ci
 
-  travis_retry goveralls -coverprofile=cover.out -service=travis-ci || true
+after_success:
+- bash <(curl -s https://codecov.io/bash)
