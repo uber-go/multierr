@@ -18,6 +18,6 @@ Released under the [MIT License].
 [doc-img]: https://godoc.org/go.uber.org/multierr?status.svg
 [doc]: https://godoc.org/go.uber.org/multierr
 [ci-img]: https://travis-ci.org/uber-go/multierr.svg?branch=master
-[cov-img]: https://coveralls.io/repos/github/uber-go/multierr/badge.svg?branch=master
+[cov-img]: https://codecov.io/gh/uber-go/multierr/branch/master/graph/badge.svg
 [ci]: https://travis-ci.org/uber-go/multierr
-[cov]: https://coveralls.io/github/uber-go/multierr?branch=master
+[cov]: https://codecov.io/gh/uber-go/multierr
