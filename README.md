@@ -8,7 +8,7 @@
 
 ## Status
 
-Beta
+Stable: No breaking changes will be made before 2.0.
 
 -------------------------------------------------------------------------------
 
