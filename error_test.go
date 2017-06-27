@@ -61,8 +61,13 @@ func newMultiErr(errors ...error) error {
 
 func TestCombine(t *testing.T) {
 	tests := []struct {
-		giveErrors     []error
-		wantError      error
+		// Input
+		giveErrors []error
+
+		// Resulting error
+		wantError error
+
+		// %+v and %v string representations
 		wantMultiline  string
 		wantSingleline string
 	}{
@@ -232,15 +237,25 @@ func TestCombine(t *testing.T) {
 			require.Equal(t, tt.wantError, err)
 
 			if tt.wantMultiline != "" {
-				assert.Equal(t, tt.wantMultiline, fmt.Sprintf("%+v", err))
+				t.Run("Sprintf/multiline", func(t *testing.T) {
+					assert.Equal(t, tt.wantMultiline, fmt.Sprintf("%+v", err))
+				})
 			}
 
 			if tt.wantSingleline != "" {
-				assert.Equal(t, tt.wantSingleline, err.Error())
+				t.Run("Sprintf/singleline", func(t *testing.T) {
+					assert.Equal(t, tt.wantSingleline, fmt.Sprintf("%v", err))
+				})
+
+				t.Run("Error()", func(t *testing.T) {
+					assert.Equal(t, tt.wantSingleline, err.Error())
+				})
+
 				if s, ok := err.(fmt.Stringer); ok {
-					assert.Equal(t, tt.wantSingleline, s.String())
+					t.Run("String()", func(t *testing.T) {
+						assert.Equal(t, tt.wantSingleline, s.String())
+					})
 				}
-				assert.Equal(t, tt.wantSingleline, fmt.Sprintf("%v", err))
 			}
 		})
 	}
