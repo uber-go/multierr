@@ -19,6 +19,33 @@
 // THE SOFTWARE.
 
 // Package multierr allows combining one or more errors together.
+//
+// Errors can be combined with the use of the Combine function.
+//
+// 	multierr.Combine(
+// 		reader.Close(),
+// 		writer.Close(),
+// 		conn.Close(),
+// 	)
+//
+// If only two errors are being combined, the Append function may be used
+// instead.
+//
+// 	err = multierr.Combine(reader.Close(), writer.Close())
+//
+// This makes it possible to record resource cleanup failures from deferred
+// blocks with the help of named return values.
+//
+// 	func sendRequest(req Request) (err error) {
+// 		conn, err := openConnection()
+// 		if err != nil {
+// 			return err
+// 		}
+// 		defer func() {
+// 			err = multierr.Append(err, conn.Close())
+// 		}()
+// 		// ...
+// 	}
 package multierr // import "go.uber.org/multierr"
 
 import (
