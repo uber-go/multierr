@@ -1,6 +1,13 @@
 Releases
 ========
 
+v1.1.0 (unreleased)
+===================
+
+-   Added an `Errors(error) []error` function to extract the underlying list of
+    errors for a multierr error.
+
+
 v1.0.0 (2017-05-31)
 ===================
 
