@@ -20,6 +20,8 @@
 
 // Package multierr allows combining one or more errors together.
 //
+// Overview
+//
 // Errors can be combined with the use of the Combine function.
 //
 // 	multierr.Combine(
@@ -45,6 +47,38 @@
 // 			err = multierr.Append(err, conn.Close())
 // 		}()
 // 		// ...
+// 	}
+//
+// The underlying list of errors for a returned error object may be retrieved
+// with the Errors function.
+//
+// 	errors := multierr.Errors(err)
+// 	if len(errors) > 0 {
+// 		fmt.Println("The following errors occurred:")
+// 	}
+//
+// Advanced Usage
+//
+// Errors returned by Combine and Append MAY implement the following
+// interface.
+//
+// 	type errorGroup interface {
+// 		// Returns a slice containing the underlying list of errors.
+// 		//
+// 		// This slice MUST NOT be modified by the caller.
+// 		Errors() []error
+// 	}
+//
+// Note that the errors MAY implement this interface. If access to the
+// underlying error list is required, users should attempt to cast error
+// objects to this interface using the two-value assigment form and handle the
+// failure case gracefully.
+//
+// 	group, ok := err.(errorGroup)
+// 	if ok {
+// 		errors = group.Errors()
+// 	} else {
+// 		errors = []error{err}
 // 	}
 package multierr // import "go.uber.org/multierr"
 
@@ -90,6 +124,43 @@ var _bufferPool = sync.Pool{
 	},
 }
 
+type errorGroup interface {
+	Errors() []error
+}
+
+// Errors returns a slice containing zero or more errors that the supplied
+// error is composed of. If the error is nil, the returned slice is empty.
+//
+// 	err := multierr.Append(r.Close(), w.Close())
+// 	errors := multierr.Errors(err)
+//
+// If the error is not composed of other errors, the returned slice contains
+// just the error that was passed in.
+//
+// Callers of this function are free to modify the returned slice.
+func Errors(err error) []error {
+	if err == nil {
+		return nil
+	}
+
+	// Note that we're casting to multiError, not errorGroup. Our contract is
+	// that returned errors MAY implement errorGroup. Errors, however, only
+	// has special behavior for multierr-specific error objects.
+	//
+	// This behavior can be expanded in the future but I think it's prudent to
+	// start with as little as possible in terms of contract and possibility
+	// of misuse.
+	eg, ok := err.(*multiError)
+	if !ok {
+		return []error{err}
+	}
+
+	errors := eg.Errors()
+	result := make([]error, len(errors))
+	copy(result, errors)
+	return result
+}
+
 // multiError is an error that holds one or more errors.
 //
 // An instance of this is guaranteed to be non-empty and flattened. That is,
@@ -100,6 +171,18 @@ var _bufferPool = sync.Pool{
 type multiError struct {
 	copyNeeded atomic.Bool
 	errors     []error
+}
+
+var _ errorGroup = (*multiError)(nil)
+
+// Errors returns the list of underlying errors.
+//
+// This slice MUST NOT be modified.
+func (merr *multiError) Errors() []error {
+	if merr == nil {
+		return nil
+	}
+	return merr.errors
 }
 
 func (merr *multiError) Error() string {

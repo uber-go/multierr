@@ -345,6 +345,109 @@ func TestAppend(t *testing.T) {
 	}
 }
 
+type notMultiErr struct{}
+
+var _ errorGroup = notMultiErr{}
+
+func (notMultiErr) Error() string {
+	return "great sadness"
+}
+
+func (notMultiErr) Errors() []error {
+	return []error{errors.New("great sadness")}
+}
+
+func TestErrors(t *testing.T) {
+	tests := []struct {
+		give error
+		want []error
+
+		// Don't attempt to cast to errorGroup or *multiError
+		dontCast bool
+	}{
+		{dontCast: true}, // nil
+		{
+			give:     errors.New("hi"),
+			want:     []error{errors.New("hi")},
+			dontCast: true,
+		},
+		{
+			// We don't yet support non-multierr errors.
+			give:     notMultiErr{},
+			want:     []error{notMultiErr{}},
+			dontCast: true,
+		},
+		{
+			give: Combine(
+				errors.New("foo"),
+				errors.New("bar"),
+			),
+			want: []error{
+				errors.New("foo"),
+				errors.New("bar"),
+			},
+		},
+		{
+			give: Append(
+				errors.New("foo"),
+				errors.New("bar"),
+			),
+			want: []error{
+				errors.New("foo"),
+				errors.New("bar"),
+			},
+		},
+		{
+			give: Append(
+				errors.New("foo"),
+				Combine(
+					errors.New("bar"),
+				),
+			),
+			want: []error{
+				errors.New("foo"),
+				errors.New("bar"),
+			},
+		},
+		{
+			give: Combine(
+				errors.New("foo"),
+				Append(
+					errors.New("bar"),
+					errors.New("baz"),
+				),
+				errors.New("qux"),
+			),
+			want: []error{
+				errors.New("foo"),
+				errors.New("bar"),
+				errors.New("baz"),
+				errors.New("qux"),
+			},
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			t.Run("Errors()", func(t *testing.T) {
+				require.Equal(t, tt.want, Errors(tt.give))
+			})
+
+			if tt.dontCast {
+				return
+			}
+
+			t.Run("multiError", func(t *testing.T) {
+				require.Equal(t, tt.want, tt.give.(*multiError).Errors())
+			})
+
+			t.Run("errorGroup", func(t *testing.T) {
+				require.Equal(t, tt.want, tt.give.(errorGroup).Errors())
+			})
+		})
+	}
+}
+
 func createMultiErrWithCapacity() error {
 	// Create a multiError that has capacity for more errors so Append will
 	// modify the underlying array that may be shared.
@@ -383,10 +486,26 @@ func TestAppendRace(t *testing.T) {
 	wg.Wait()
 }
 
+func TestErrorsSliceIsImmutable(t *testing.T) {
+	err1 := errors.New("err1")
+	err2 := errors.New("err2")
+
+	err := Append(err1, err2)
+	gotErrors := Errors(err)
+	require.Equal(t, []error{err1, err2}, gotErrors, "errors must match")
+
+	gotErrors[0] = nil
+	gotErrors[1] = errors.New("err3")
+
+	require.Equal(t, []error{err1, err2}, Errors(err),
+		"errors must match after modification")
+}
+
 func TestNilMultierror(t *testing.T) {
 	// For safety, all operations on multiError should be safe even if it is
 	// nil.
 	var err *multiError
 
 	require.Empty(t, err.Error())
+	require.Empty(t, err.Errors())
 }
