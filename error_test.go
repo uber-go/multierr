@@ -367,3 +367,11 @@ func TestAppendRace(t *testing.T) {
 
 	wg.Wait()
 }
+
+func TestNilMultierror(t *testing.T) {
+	// For safety, all operations on multiError should be safe even if it is
+	// nil.
+	var err *multiError
+
+	require.Empty(t, err.Error())
+}
