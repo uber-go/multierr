@@ -69,10 +69,12 @@
 // 		Errors() []error
 // 	}
 //
-// Note that the errors MAY implement this interface. If access to the
-// underlying error list is required, users should attempt to cast error
-// objects to this interface using the two-value assigment form and handle the
-// failure case gracefully.
+// Note that if you need access to list of errors behind a multierr error, you
+// should prefer using the Errors function. That said, if you need cheap
+// read-only access to the underlying errors slice, you can attempt to cast
+// the error to this interface. You MUST handle the failure case gracefully
+// because errors returned by Combine and Append are not guaranteed to
+// implement this interface.
 //
 // 	var errors []error
 // 	group, ok := err.(errorGroup)
@@ -364,8 +366,8 @@ func Combine(errors ...error) error {
 //
 // 	err = multierr.Append(reader.Close(), writer.Close())
 //
-// This may be used to record failure of deferred operations without losing
-// information about the original error.
+// The following pattern may also be used to record failure of deferred
+// operations without losing information about the original error.
 //
 // 	func doSomething(..) (err error) {
 // 		f := acquireResource()
