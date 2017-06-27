@@ -74,6 +74,7 @@
 // objects to this interface using the two-value assigment form and handle the
 // failure case gracefully.
 //
+// 	var errors []error
 // 	group, ok := err.(errorGroup)
 // 	if ok {
 // 		errors = group.Errors()
