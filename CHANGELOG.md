@@ -1,7 +1,7 @@
 Releases
 ========
 
-v1.1.0 (unreleased)
+v1.1.0 (2017-06-30)
 ===================
 
 -   Added an `Errors(error) []error` function to extract the underlying list of
