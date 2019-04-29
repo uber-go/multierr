@@ -7,9 +7,8 @@ env:
     - GO15VENDOREXPERIMENT=1
 
 go:
-  - 1.7
-  - 1.8
-  - 1.9
+  - 1.11.x
+  - 1.12.x
 
 cache:
   directories:
