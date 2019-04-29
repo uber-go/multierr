@@ -99,8 +99,6 @@ var (
 	// Separator for single-line error messages.
 	_singlelineSeparator = []byte("; ")
 
-	_newline = []byte("\n")
-
 	// Prefix for multi-line messages
 	_multilinePrefix = []byte("the following errors occurred:")
 
