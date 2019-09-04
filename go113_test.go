@@ -48,7 +48,7 @@ func (e errUnprecedentedFailure) Unwrap() error {
 	return errRootCause{e.id}
 }
 
-type errRootCause struct{ id int }
+type errRootCause struct{ i int }
 
 func (errRootCause) Error() string {
 	return "root cause"
@@ -102,7 +102,7 @@ func TestErrorsWrapping(t *testing.T) {
 		t.Run("As", func(t *testing.T) {
 			var got errRootCause
 			require.True(t, errors.As(err, &got))
-			assert.Equal(t, 43, got.id)
+			assert.Equal(t, 43, got.i)
 		})
 
 		t.Run("Is", func(t *testing.T) {
