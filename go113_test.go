@@ -122,3 +122,23 @@ func TestErrorsWrapping(t *testing.T) {
 		})
 	})
 }
+
+func TestErrorsWrappingSameType(t *testing.T) {
+	err := multierr.Combine(
+		errGreatSadness{1},
+		errGreatSadness{2},
+		errGreatSadness{3},
+	)
+
+	t.Run("As returns first", func(t *testing.T) {
+		var got errGreatSadness
+		require.True(t, errors.As(err, &got))
+		assert.Equal(t, 1, got.id)
+	})
+
+	t.Run("Is matches all", func(t *testing.T) {
+		assert.True(t, errors.Is(err, errGreatSadness{1}))
+		assert.True(t, errors.Is(err, errGreatSadness{2}))
+		assert.True(t, errors.Is(err, errGreatSadness{3}))
+	})
+}
