@@ -1,6 +1,13 @@
 Releases
 ========
 
+v1.2.0 (unreleased)
+===================
+
+-   Support extracting and matching against wrapped errors with `errors.As`
+    and `errors.Is`.
+
+
 v1.1.0 (2017-06-30)
 ===================
 
