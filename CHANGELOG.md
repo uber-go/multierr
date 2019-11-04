@@ -1,6 +1,13 @@
 Releases
 ========
 
+v1.4.0 (unreleased)
+===================
+
+-   Add `AppendInto` function to more ergonomically build errors inside a
+    loop.
+
+
 v1.3.0 (2019-10-29)
 ===================
 

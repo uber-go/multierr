@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Uber Technologies, Inc.
+// Copyright (c) 2019 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -508,4 +508,75 @@ func TestNilMultierror(t *testing.T) {
 
 	require.Empty(t, err.Error())
 	require.Empty(t, err.Errors())
+}
+
+func TestAppendInto(t *testing.T) {
+	tests := []struct {
+		desc string
+		into *error
+		give error
+		want error
+	}{
+		{
+			desc: "append into empty",
+			into: new(error),
+			give: errors.New("foo"),
+			want: errors.New("foo"),
+		},
+		{
+			desc: "append into non-empty, non-multierr",
+			into: errorPtr(errors.New("foo")),
+			give: errors.New("bar"),
+			want: Combine(
+				errors.New("foo"),
+				errors.New("bar"),
+			),
+		},
+		{
+			desc: "append into non-empty multierr",
+			into: errorPtr(Combine(
+				errors.New("foo"),
+				errors.New("bar"),
+			)),
+			give: errors.New("baz"),
+			want: Combine(
+				errors.New("foo"),
+				errors.New("bar"),
+				errors.New("baz"),
+			),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			assert.True(t, AppendInto(tt.into, tt.give))
+			assert.Equal(t, tt.want, *tt.into)
+		})
+	}
+}
+
+func TestAppendIntoNil(t *testing.T) {
+	t.Run("nil pointer panics", func(t *testing.T) {
+		assert.Panics(t, func() {
+			AppendInto(nil, errors.New("foo"))
+		})
+	})
+
+	t.Run("nil error is no-op", func(t *testing.T) {
+		t.Run("empty left", func(t *testing.T) {
+			var err error
+			assert.False(t, AppendInto(&err, nil))
+			assert.Nil(t, err)
+		})
+
+		t.Run("non-empty left", func(t *testing.T) {
+			err := errors.New("foo")
+			assert.False(t, AppendInto(&err, nil))
+			assert.Equal(t, errors.New("foo"), err)
+		})
+	})
+}
+
+func errorPtr(err error) *error {
+	return &err
 }
