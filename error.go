@@ -423,12 +423,15 @@ func Append(left error, right error) error {
 //
 // Compare this with a verison that relies solely on Append:
 //
-// 	var item Item
-// 	if parseErr := parse(line, &item); parseErr != nil {
-// 		err = multierr.Append(err, parseErr)
-// 		continue
+// 	var err error
+// 	for line := range lines {
+// 		var item Item
+// 		if parseErr := parse(line, &item); parseErr != nil {
+// 			err = multierr.Append(err, parseErr)
+// 			continue
+// 		}
+// 		items = append(items, item)
 // 	}
-// 	items = append(items, item)
 func AppendInto(into *error, err error) (errored bool) {
 	if into == nil {
 		// We panic if 'into' is nil. This is not documented above
