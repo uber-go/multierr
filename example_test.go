@@ -70,3 +70,25 @@ func ExampleErrors() {
 	// call 3 failed
 	// call 5 failed
 }
+
+func ExampleAppendInto() {
+	var err error
+
+	if multierr.AppendInto(&err, errors.New("foo")) {
+		fmt.Println("call 1 failed")
+	}
+
+	if multierr.AppendInto(&err, nil) {
+		fmt.Println("call 2 failed")
+	}
+
+	if multierr.AppendInto(&err, errors.New("baz")) {
+		fmt.Println("call 3 failed")
+	}
+
+	fmt.Println(err)
+	// Output:
+	// call 1 failed
+	// call 3 failed
+	// foo; baz
+}
