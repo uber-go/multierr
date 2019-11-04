@@ -1,7 +1,7 @@
 Releases
 ========
 
-v1.4.0 (unreleased)
+v1.4.0 (2019-11-04)
 ===================
 
 -   Add `AppendInto` function to more ergonomically build errors inside a
