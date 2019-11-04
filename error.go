@@ -410,7 +410,7 @@ func Append(left error, right error) error {
 // 	err := multierr.Append(r.Close(), w.Close())
 //
 // As AppendInto reports whether the provided error was non-nil, it may be
-// used to build a multierr error in a loop more ergonomically.
+// used to build a multierr error in a loop more ergonomically. For example:
 //
 // 	var err error
 // 	for line := range lines {
@@ -421,7 +421,7 @@ func Append(left error, right error) error {
 // 		items = append(items, item)
 // 	}
 //
-// Compare the loop body above with a version that relies solely on Append.
+// Compare this with a verison that relies solely on Append:
 //
 // 	var item Item
 // 	if parseErr := parse(line, &item); parseErr != nil {
