@@ -430,13 +430,17 @@ func Append(left error, right error) error {
 // 	}
 // 	items = append(items, item)
 func AppendInto(into *error, err error) (errored bool) {
+	if into == nil {
+		// We panic if 'into' is nil. This is not documented above
+		// because suggesting that the pointer must be non-nil may
+		// confuse users into thinking that the error that it points
+		// to must be non-nil.
+		panic("misuse of multierr.AppendInto: into pointer must not be nil")
+	}
+
 	if err == nil {
 		return false
 	}
-	// We will panic if 'into' is nil. This is not documented above
-	// because suggesting that the pointer must be non-nil may confuse
-	// users into thinking that the error that it points to must be
-	// non-nil.
 	*into = Append(*into, err)
 	return true
 }
