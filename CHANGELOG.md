@@ -1,7 +1,7 @@
 Releases
 ========
 
-v1.6.0 (unreleased)
+v1.6.0 (2020-09-14)
 ===================
 
 -   Actually drop library dependency on development-time tooling.
