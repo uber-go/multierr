@@ -86,12 +86,10 @@
 package multierr // import "go.uber.org/multierr"
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"strings"
-	"sync"
 
 	"go.uber.org/atomic"
 )
@@ -118,13 +116,6 @@ var (
 	_multilineSeparator = []byte("\n -  ")
 	_multilineIndent    = []byte("    ")
 )
-
-// _bufferPool is a pool of bytes.Buffers.
-var _bufferPool = sync.Pool{
-	New: func() interface{} {
-		return &bytes.Buffer{}
-	},
-}
 
 type errorGroup interface {
 	Errors() []error
@@ -218,15 +209,9 @@ func (merr *multiError) Error() string {
 	if merr == nil {
 		return ""
 	}
-
-	buff := _bufferPool.Get().(*bytes.Buffer)
-	buff.Reset()
-
+	buff := &strings.Builder{}
 	merr.writeSingleline(buff)
-
-	result := buff.String()
-	_bufferPool.Put(buff)
-	return result
+	return buff.String()
 }
 
 func (merr *multiError) Format(f fmt.State, c rune) {
