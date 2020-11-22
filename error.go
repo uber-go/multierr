@@ -449,7 +449,7 @@ func Append(left error, right error) error {
 // 		items = append(items, item)
 // 	}
 //
-// Compare this with a verison that relies solely on Append:
+// Compare this with a version that relies solely on Append:
 //
 // 	var err error
 // 	for line := range lines {
