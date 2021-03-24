@@ -555,6 +555,126 @@ func TestAppendInto(t *testing.T) {
 	}
 }
 
+func TestAppendInvoke(t *testing.T) {
+	tests := []struct {
+		desc string
+		into *error
+		give Invoker
+		want error
+	}{
+		{
+			desc: "append into empty",
+			into: new(error),
+			give: Invoke(func() error {
+				return errors.New("foo")
+			}),
+			want: errors.New("foo"),
+		},
+		{
+			desc: "append into non-empty, non-multierr",
+			into: errorPtr(errors.New("foo")),
+			give: Invoke(func() error {
+				return errors.New("bar")
+			}),
+			want: Combine(
+				errors.New("foo"),
+				errors.New("bar"),
+			),
+		},
+		{
+			desc: "append into non-empty multierr",
+			into: errorPtr(Combine(
+				errors.New("foo"),
+				errors.New("bar"),
+			)),
+			give: Invoke(func() error {
+				return errors.New("baz")
+			}),
+			want: Combine(
+				errors.New("foo"),
+				errors.New("bar"),
+				errors.New("baz"),
+			),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			AppendInvoke(tt.into, tt.give)
+			assert.Equal(t, tt.want, *tt.into)
+		})
+	}
+}
+
+type closerMock func() error
+
+func (c closerMock) Close() error {
+	return c()
+}
+
+func newCloserMock(tb testing.TB, err error) io.Closer {
+	var closed bool
+	tb.Cleanup(func() {
+		if !closed {
+			tb.Error("closerMock wasn't closed before test end")
+		}
+	})
+
+	return closerMock(func() error {
+		closed = true
+		return err
+	})
+}
+
+func TestClose(t *testing.T) {
+	tests := []struct {
+		desc      string
+		into      *error
+		giveSetup func(tb testing.TB) Invoker
+		want      error
+	}{
+		{
+			desc: "append invoker nil into empty",
+			into: new(error),
+			giveSetup: func(tb testing.TB) Invoker {
+				return Close(newCloserMock(tb, nil))
+			},
+			want: nil,
+		},
+		{
+			desc: "append invoker into non-empty, non-multierr",
+			into: errorPtr(errors.New("foo")),
+			giveSetup: func(tb testing.TB) Invoker {
+				return Close(newCloserMock(tb, errors.New("bar")))
+			},
+			want: Combine(
+				errors.New("foo"),
+				errors.New("bar"),
+			),
+		},
+		{
+			desc: "append invoker into non-empty multierr",
+			into: errorPtr(Combine(
+				errors.New("foo"),
+				errors.New("bar"),
+			)),
+			giveSetup: func(tb testing.TB) Invoker {
+				return Close(newCloserMock(tb, errors.New("baz")))
+			},
+			want: Combine(
+				errors.New("foo"),
+				errors.New("bar"),
+				errors.New("baz"),
+			),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			AppendInvoke(tt.into, tt.giveSetup(t))
+			assert.Equal(t, tt.want, *tt.into)
+		})
+	}
+}
+
 func TestAppendIntoNil(t *testing.T) {
 	t.Run("nil pointer panics", func(t *testing.T) {
 		assert.Panics(t, func() {

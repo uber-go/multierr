@@ -475,3 +475,59 @@ func AppendInto(into *error, err error) (errored bool) {
 	*into = Append(*into, err)
 	return true
 }
+
+// Invoker wraps a function that might return an error.
+// It is used in combination with AppendInvoke to conveniently capture errors e.g. with defer
+// statements without having to deal with anonymous inline functions.
+// See also Invoke for wrapping any `func() error` without having to implement the
+// Invoker interface directly.
+// Close is a special Invoker wrapper for resources implementing the io.Closer interface.
+type Invoker interface {
+	Invoke() error
+}
+
+// Invoke is an Invoker wrapper for arbitrary functions returning solely an error.
+// It might be used e.g. for bufio.Scanner.Err() or similar functions in combination with
+// AppendInvoke to capture cleanup errors without losing original error information
+type Invoke func() error
+
+func (cf Invoke) Invoke() error {
+	return cf()
+}
+
+// Close is a special wrapper for the common io.Closer interface.
+// This wrapper is a specialization of Invoke for the common case where
+// an IO resource needs to be closed after everything else is done.
+//
+// The following sample illustrates how to record the failure of the deferred Close() call
+// without losing information about the original error
+//
+// 	func doSomething(..) (err error) {
+// 		f := acquireResource()
+//		defer multierr.AppendInvoke(&err, multierr.Close(f))
+//      // ...
+//  }
+func Close(closer io.Closer) Invoker {
+	return Invoke(closer.Close)
+}
+
+// AppendInvoke appends the result of the given Invoker into the given error
+// It is a specialization of AppendInto that takes an Invoker to allow inlined defer statements without
+// an anonymous function that e.g. invokes io.Closer.Close() or bufio.Scanner.Err() when the defer statement
+// is executed.
+// The following snippet illustrates the anti-pattern that leads to undesired behavior:
+//
+// defer multierr.AppendInto(&err, scanner.Err())
+//
+// declaring the defer statement evaluates the Err() call immediately and not at the execution time of the
+// AppendInto call as possibly assumed.
+//
+// The following pattern achieves the desired behavior:
+//
+// defer multierr.AppendInvoke(&err, multierr.Invoke(scanner.Err))
+//
+// multierr.Invoke() casts any function returning solely an error to an Invoker and executes the captured
+// function when multierr.AppendInvoke() is called i.e. after the enclosing function returned.
+func AppendInvoke(into *error, call Invoker) {
+	AppendInto(into, call.Invoke())
+}
