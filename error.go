@@ -35,8 +35,19 @@
 //
 // 	err = multierr.Append(reader.Close(), writer.Close())
 //
-// This makes it possible to record resource cleanup failures from deferred
-// blocks with the help of named return values.
+// The underlying list of errors for a returned error object may be retrieved
+// with the Errors function.
+//
+// 	errors := multierr.Errors(err)
+// 	if len(errors) > 0 {
+// 		fmt.Println("The following errors occurred:", errors)
+// 	}
+//
+// Deferred Functions
+//
+// Go makes it possible to modify the return value of a function in a deferral
+// if the function was using named returns. This makes it possible to record
+// resource cleanup failures from deferred blocks.
 //
 // 	func sendRequest(req Request) (err error) {
 // 		conn, err := openConnection()
@@ -49,13 +60,20 @@
 // 		// ...
 // 	}
 //
-// The underlying list of errors for a returned error object may be retrieved
-// with the Errors function.
+// multierr provides the Invoker type and AppendInvoke function to make cases
+// like the above simpler and obviate the need for a closure. The following is
+// roughly equivalent to the example above.
 //
-// 	errors := multierr.Errors(err)
-// 	if len(errors) > 0 {
-// 		fmt.Println("The following errors occurred:", errors)
+// 	func sendRequest(req Request) (err error) {
+// 		conn, err := openConnection()
+// 		if err != nil {
+// 			return err
+// 		}
+// 		defer multierr.AppendInvoke(err, multierr.Close(conn))
+// 		// ...
 // 	}
+//
+// See AppendInvoke and Invoker for more information.
 //
 // Advanced Usage
 //
