@@ -43,6 +43,40 @@
 // 		fmt.Println("The following errors occurred:", errors)
 // 	}
 //
+// Appending from a loop
+//
+// You sometimes need to append into an error from a loop.
+//
+// 	var err error
+// 	for _, item := range items {
+// 		err = multierr.Append(err, process(item))
+// 	}
+//
+// Cases like this may require knowledge of whether an individual instance
+// failed. This usually requires introduction of a new variable.
+//
+// 	var err error
+// 	for _, item := range items {
+// 		if perr := process(item); perr != nil {
+// 			log.Warn("skipping item", item)
+// 			err = multierr.Append(err, perr)
+// 		}
+// 	}
+//
+// multierr includes AppendInto to simplify cases like this.
+//
+// 	var err error
+// 	for _, item := range items {
+// 		if multierr.AppendInto(&err, process(item)) {
+// 			log.Warn("skipping item", item)
+// 		}
+// 	}
+//
+// This will append the error into the err variable, and return true if that
+// individual error was non-nil.
+//
+// See AppendInto for more information.
+//
 // Deferred Functions
 //
 // Go makes it possible to modify the return value of a function in a defer
