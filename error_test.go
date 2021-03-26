@@ -625,41 +625,35 @@ func newCloserMock(tb testing.TB, err error) io.Closer {
 	})
 }
 
-func TestClose(t *testing.T) {
+func TestAppendInvokeClose(t *testing.T) {
 	tests := []struct {
-		desc      string
-		into      *error
-		giveSetup func(tb testing.TB) Invoker
-		want      error
+		desc string
+		into *error
+		give error // error returned by Close()
+		want error
 	}{
 		{
-			desc: "append invoker nil into empty",
+			desc: "append close nil into empty",
 			into: new(error),
-			giveSetup: func(tb testing.TB) Invoker {
-				return Close(newCloserMock(tb, nil))
-			},
+			give: nil,
 			want: nil,
 		},
 		{
-			desc: "append invoker into non-empty, non-multierr",
+			desc: "append close into non-empty, non-multierr",
 			into: errorPtr(errors.New("foo")),
-			giveSetup: func(tb testing.TB) Invoker {
-				return Close(newCloserMock(tb, errors.New("bar")))
-			},
+			give: errors.New("bar"),
 			want: Combine(
 				errors.New("foo"),
 				errors.New("bar"),
 			),
 		},
 		{
-			desc: "append invoker into non-empty multierr",
+			desc: "append close into non-empty multierr",
 			into: errorPtr(Combine(
 				errors.New("foo"),
 				errors.New("bar"),
 			)),
-			giveSetup: func(tb testing.TB) Invoker {
-				return Close(newCloserMock(tb, errors.New("baz")))
-			},
+			give: errors.New("baz"),
 			want: Combine(
 				errors.New("foo"),
 				errors.New("bar"),
@@ -669,7 +663,8 @@ func TestClose(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			AppendInvoke(tt.into, tt.giveSetup(t))
+			closer := newCloserMock(t, tt.give)
+			AppendInvoke(tt.into, Close(closer))
 			assert.Equal(t, tt.want, *tt.into)
 		})
 	}
