@@ -34,5 +34,5 @@ lint: gofmt golint staticcheck
 
 .PHONY: cover
 cover:
-	go test -coverprofile=cover.out -coverpkg=./... -v ./...
+	go test -race -coverprofile=cover.out -coverpkg=./... -v ./...
 	go tool cover -html=cover.out -o cover.html
