@@ -590,13 +590,12 @@ func Close(closer io.Closer) Invoker {
 // invoked function will be evaluated at the time of the defer block rather
 // than when the function returns.
 //
-// 		// BAD: This is likely not what the caller intended. This will
-// 		// evaluate foo() right away and append its result into the
-// 		// error when the function returns.
+// 	// BAD: This is likely not what the caller intended. This will evaluate
+// 	// foo() right away and append its result into the error when the
+// 	// function returns.
 // 	defer multierr.AppendInto(&err, foo())
 //
-// 		// GOOD: This will defer invocation of foo unutil the function
-// 		// returns.
+// 	// GOOD: This will defer invocation of foo unutil the function returns.
 // 	defer multierr.AppendInvoke(&err, multierr.Invoke(foo))
 //
 // multierr provides a few Invoker implementations out of the box for
