@@ -45,9 +45,9 @@
 //
 // Deferred Functions
 //
-// Go makes it possible to modify the return value of a function in a deferral
-// if the function was using named returns. This makes it possible to record
-// resource cleanup failures from deferred blocks.
+// Go makes it possible to modify the return value of a function in a defer
+// block if the function was using named returns. This makes it possible to
+// record resource cleanup failures from deferred blocks.
 //
 // 	func sendRequest(req Request) (err error) {
 // 		conn, err := openConnection()
@@ -575,7 +575,7 @@ func Close(closer io.Closer) Invoker {
 // 		// ...
 // 	}
 //
-// Without deferrals, AppendInvoke behaves exactly like AppendInto.
+// Without defer, AppendInvoke behaves exactly like AppendInto.
 //
 // 	err := // ...
 // 	multierr.AppendInvoke(&err, mutltierr.Invoke(foo))
@@ -587,8 +587,8 @@ func Close(closer io.Closer) Invoker {
 //
 // The advantage of the indirection introduced by Invoker is to make it easy
 // to defer the invocation of a function. Without this indirection, the
-// invoked function will be evaluated at the time of the deferral rather than
-// when the function returns.
+// invoked function will be evaluated at the time of the defer block rather
+// than when the function returns.
 //
 // 		// BAD: This is likely not what the caller intended. This will
 // 		// evaluate foo() right away and append its result into the
