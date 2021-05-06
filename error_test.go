@@ -596,6 +596,27 @@ func TestAppendInvoke(t *testing.T) {
 				errors.New("baz"),
 			),
 		},
+		{
+			desc: "close/empty",
+			into: new(error),
+			give: Close(newCloserMock(t, errors.New("foo"))),
+			want: errors.New("foo"),
+		},
+		{
+			desc: "close/no fail",
+			into: new(error),
+			give: Close(newCloserMock(t, nil)),
+			want: nil,
+		},
+		{
+			desc: "close/non-empty",
+			into: errorPtr(errors.New("foo")),
+			give: Close(newCloserMock(t, errors.New("bar"))),
+			want: Combine(
+				errors.New("foo"),
+				errors.New("bar"),
+			),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
@@ -605,49 +626,17 @@ func TestAppendInvoke(t *testing.T) {
 	}
 }
 
-func TestAppendInvokeClose(t *testing.T) {
-	tests := []struct {
-		desc string
-		into *error
-		give error // error returned by Close()
-		want error
-	}{
-		{
-			desc: "append close nil into empty",
-			into: new(error),
-			give: nil,
-			want: nil,
-		},
-		{
-			desc: "append close into non-empty, non-multierr",
-			into: errorPtr(errors.New("foo")),
-			give: errors.New("bar"),
-			want: Combine(
-				errors.New("foo"),
-				errors.New("bar"),
-			),
-		},
-		{
-			desc: "append close into non-empty multierr",
-			into: errorPtr(Combine(
-				errors.New("foo"),
-				errors.New("bar"),
-			)),
-			give: errors.New("baz"),
-			want: Combine(
-				errors.New("foo"),
-				errors.New("bar"),
-				errors.New("baz"),
-			),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.desc, func(t *testing.T) {
-			closer := newCloserMock(t, tt.give)
-			AppendInvoke(tt.into, Close(closer))
-			assert.Equal(t, tt.want, *tt.into)
-		})
-	}
+func TestClose(t *testing.T) {
+	t.Run("fail", func(t *testing.T) {
+		give := errors.New("great sadness")
+		got := Close(newCloserMock(t, give)).Invoke()
+		assert.Same(t, give, got)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		got := Close(newCloserMock(t, nil)).Invoke()
+		assert.Nil(t, got)
+	})
 }
 
 func TestAppendIntoNil(t *testing.T) {
@@ -689,7 +678,6 @@ func newCloserMock(tb testing.TB, err error) io.Closer {
 			tb.Error("closerMock wasn't closed before test end")
 		}
 	})
-
 	return closerMock(func() error {
 		closed = true
 		return err
