@@ -23,6 +23,7 @@ package multierr_test
 import (
 	"errors"
 	"fmt"
+	"io"
 
 	"go.uber.org/multierr"
 )
@@ -91,4 +92,65 @@ func ExampleAppendInto() {
 	// call 1 failed
 	// call 3 failed
 	// foo; baz
+}
+
+func ExampleAppendInvoke() {
+	var err error
+
+	var errFunc1 multierr.Invoker = multierr.Invoke(func() error {
+		fmt.Println("call 1 failed")
+		return errors.New("foo")
+	})
+
+	var errFunc2 multierr.Invoker = multierr.Invoke(func() error {
+		fmt.Println("call 2 did not fail")
+		return nil
+	})
+
+	var errFunc3 multierr.Invoker = multierr.Invoke(func() error {
+		fmt.Println("call 3 failed")
+		return errors.New("baz")
+	})
+
+	defer func() {
+		fmt.Println(err)
+	}()
+	defer multierr.AppendInvoke(&err, errFunc3)
+	defer multierr.AppendInvoke(&err, errFunc2)
+	defer multierr.AppendInvoke(&err, errFunc1)
+
+	// Output:
+	// call 1 failed
+	// call 2 did not fail
+	// call 3 failed
+	// foo; baz
+}
+
+type fakeCloser func() error
+
+func (f fakeCloser) Close() error {
+	return f()
+}
+
+func FakeCloser(err error) io.Closer {
+	return fakeCloser(func() error {
+		return err
+	})
+}
+
+func ExampleClose() {
+	var err error
+
+	closer := FakeCloser(errors.New("foo"))
+
+	defer func() {
+		fmt.Println(err)
+	}()
+	defer multierr.AppendInvoke(&err, multierr.Close(closer))
+
+	fmt.Println("Hello, World")
+
+	// Output:
+	// Hello, World
+	// foo
 }

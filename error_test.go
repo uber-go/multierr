@@ -555,6 +555,101 @@ func TestAppendInto(t *testing.T) {
 	}
 }
 
+func TestAppendInvoke(t *testing.T) {
+	tests := []struct {
+		desc string
+		into *error
+		give Invoker
+		want error
+	}{
+		{
+			desc: "append into empty",
+			into: new(error),
+			give: Invoke(func() error {
+				return errors.New("foo")
+			}),
+			want: errors.New("foo"),
+		},
+		{
+			desc: "append into non-empty, non-multierr",
+			into: errorPtr(errors.New("foo")),
+			give: Invoke(func() error {
+				return errors.New("bar")
+			}),
+			want: Combine(
+				errors.New("foo"),
+				errors.New("bar"),
+			),
+		},
+		{
+			desc: "append into non-empty multierr",
+			into: errorPtr(Combine(
+				errors.New("foo"),
+				errors.New("bar"),
+			)),
+			give: Invoke(func() error {
+				return errors.New("baz")
+			}),
+			want: Combine(
+				errors.New("foo"),
+				errors.New("bar"),
+				errors.New("baz"),
+			),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			AppendInvoke(tt.into, tt.give)
+			assert.Equal(t, tt.want, *tt.into)
+		})
+	}
+}
+
+func TestAppendInvokeClose(t *testing.T) {
+	tests := []struct {
+		desc string
+		into *error
+		give error // error returned by Close()
+		want error
+	}{
+		{
+			desc: "append close nil into empty",
+			into: new(error),
+			give: nil,
+			want: nil,
+		},
+		{
+			desc: "append close into non-empty, non-multierr",
+			into: errorPtr(errors.New("foo")),
+			give: errors.New("bar"),
+			want: Combine(
+				errors.New("foo"),
+				errors.New("bar"),
+			),
+		},
+		{
+			desc: "append close into non-empty multierr",
+			into: errorPtr(Combine(
+				errors.New("foo"),
+				errors.New("bar"),
+			)),
+			give: errors.New("baz"),
+			want: Combine(
+				errors.New("foo"),
+				errors.New("bar"),
+				errors.New("baz"),
+			),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			closer := newCloserMock(t, tt.give)
+			AppendInvoke(tt.into, Close(closer))
+			assert.Equal(t, tt.want, *tt.into)
+		})
+	}
+}
+
 func TestAppendIntoNil(t *testing.T) {
 	t.Run("nil pointer panics", func(t *testing.T) {
 		assert.Panics(t, func() {
@@ -579,4 +674,24 @@ func TestAppendIntoNil(t *testing.T) {
 
 func errorPtr(err error) *error {
 	return &err
+}
+
+type closerMock func() error
+
+func (c closerMock) Close() error {
+	return c()
+}
+
+func newCloserMock(tb testing.TB, err error) io.Closer {
+	var closed bool
+	tb.Cleanup(func() {
+		if !closed {
+			tb.Error("closerMock wasn't closed before test end")
+		}
+	})
+
+	return closerMock(func() error {
+		closed = true
+		return err
+	})
 }
