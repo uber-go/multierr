@@ -1,7 +1,7 @@
 Releases
 ========
 
-v1.7.0 (unreleased)
+v1.7.0 (2021-05-06)
 ===================
 
 -   Add `AppendInvoke` to append into errors from `defer` blocks.
