@@ -605,26 +605,6 @@ func TestAppendInvoke(t *testing.T) {
 	}
 }
 
-type closerMock func() error
-
-func (c closerMock) Close() error {
-	return c()
-}
-
-func newCloserMock(tb testing.TB, err error) io.Closer {
-	var closed bool
-	tb.Cleanup(func() {
-		if !closed {
-			tb.Error("closerMock wasn't closed before test end")
-		}
-	})
-
-	return closerMock(func() error {
-		closed = true
-		return err
-	})
-}
-
 func TestAppendInvokeClose(t *testing.T) {
 	tests := []struct {
 		desc string
@@ -694,4 +674,24 @@ func TestAppendIntoNil(t *testing.T) {
 
 func errorPtr(err error) *error {
 	return &err
+}
+
+type closerMock func() error
+
+func (c closerMock) Close() error {
+	return c()
+}
+
+func newCloserMock(tb testing.TB, err error) io.Closer {
+	var closed bool
+	tb.Cleanup(func() {
+		if !closed {
+			tb.Error("closerMock wasn't closed before test end")
+		}
+	})
+
+	return closerMock(func() error {
+		closed = true
+		return err
+	})
 }

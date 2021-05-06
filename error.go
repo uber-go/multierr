@@ -495,7 +495,7 @@ func AppendInto(into *error, err error) (errored bool) {
 }
 
 // Invoker is an operation that may fail with an error. Use it with
-// AppendInvoke to append the result of calling the function into a function.
+// AppendInvoke to append the result of calling the function into an error.
 // This allows you to conveniently defer capture of failing operations.
 //
 // See also, Close and Invoke.
@@ -525,7 +525,7 @@ type Invoker interface {
 type Invoke func() error
 
 // Invoke calls the supplied function and returns its result.
-func (f Invoke) Invoke() error { return f() }
+func (i Invoke) Invoke() error { return i() }
 
 // Close builds an Invoker that closes the provided io.Closer. Use it with
 // AppendInvoke to close io.Closers and append their results into an error.
@@ -590,17 +590,17 @@ func Close(closer io.Closer) Invoker {
 // invoked function will be evaluated at the time of the deferral rather than
 // when the function returns.
 //
-// 	defer multierr.AppendInto(&err, foo())
 // 		// BAD: This is likely not what the caller intended. This will
 // 		// evaluate foo() right away and append its result into the
 // 		// error when the function returns.
+// 	defer multierr.AppendInto(&err, foo())
 //
-// 	defer multierr.AppendInvoke(&err, multierr.Invoke(foo))
 // 		// GOOD: This will defer invocation of foo unutil the function
 // 		// returns.
+// 	defer multierr.AppendInvoke(&err, multierr.Invoke(foo))
 //
 // multierr provides a few Invoker implementations out of the box for
 // convenience. See Invoker for more information.
-func AppendInvoke(into *error, call Invoker) {
-	AppendInto(into, call.Invoke())
+func AppendInvoke(into *error, invoker Invoker) {
+	AppendInto(into, invoker.Invoke())
 }
