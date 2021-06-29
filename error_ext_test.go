@@ -57,6 +57,7 @@ func TestErrorsWrapping(t *testing.T) {
 		errGreatSadness{42},
 		errUnprecedentedFailure{43},
 	)
+	err1 := err.(error)
 
 	t.Run("left", func(t *testing.T) {
 		t.Run("As", func(t *testing.T) {
@@ -67,7 +68,9 @@ func TestErrorsWrapping(t *testing.T) {
 
 		t.Run("Is", func(t *testing.T) {
 			assert.False(t, errors.Is(err, errGreatSadness{41}))
+			assert.False(t, multierr.Is(err1, errGreatSadness{41}))
 			assert.True(t, errors.Is(err, errGreatSadness{42}))
+			assert.True(t, multierr.Is(err1, errGreatSadness{42}))
 		})
 	})
 
@@ -80,7 +83,9 @@ func TestErrorsWrapping(t *testing.T) {
 
 		t.Run("Is", func(t *testing.T) {
 			assert.False(t, errors.Is(err, errUnprecedentedFailure{42}))
+			assert.False(t, multierr.Is(err1, errUnprecedentedFailure{42}))
 			assert.True(t, errors.Is(err, errUnprecedentedFailure{43}))
+			assert.True(t, multierr.Is(err1, errUnprecedentedFailure{43}))
 		})
 	})
 
@@ -93,6 +98,7 @@ func TestErrorsWrapping(t *testing.T) {
 
 		t.Run("Is", func(t *testing.T) {
 			assert.True(t, errors.Is(err, err))
+			assert.True(t, multierr.Is(err1, err1))
 		})
 	})
 
@@ -105,7 +111,9 @@ func TestErrorsWrapping(t *testing.T) {
 
 		t.Run("Is", func(t *testing.T) {
 			assert.False(t, errors.Is(err, errRootCause{42}))
+			assert.False(t, multierr.Is(err1, errRootCause{42}))
 			assert.True(t, errors.Is(err, errRootCause{43}))
+			assert.True(t, multierr.Is(err1, errRootCause{43}))
 		})
 	})
 
@@ -117,6 +125,7 @@ func TestErrorsWrapping(t *testing.T) {
 
 		t.Run("Is", func(t *testing.T) {
 			assert.False(t, errors.Is(err, errors.New("great sadness")))
+			assert.False(t, multierr.Is(err1, errors.New("great sadness")))
 		})
 	})
 }
@@ -136,7 +145,10 @@ func TestErrorsWrappingSameType(t *testing.T) {
 
 	t.Run("Is matches all", func(t *testing.T) {
 		assert.True(t, errors.Is(err, errGreatSadness{1}))
+		assert.True(t, multierr.Is(err, errGreatSadness{1}))
 		assert.True(t, errors.Is(err, errGreatSadness{2}))
+		assert.True(t, multierr.Is(err, errGreatSadness{2}))
 		assert.True(t, errors.Is(err, errGreatSadness{3}))
+		assert.True(t, multierr.Is(err, errGreatSadness{3}))
 	})
 }

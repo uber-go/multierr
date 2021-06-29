@@ -215,6 +215,24 @@ func Errors(err error) []error {
 	return result
 }
 
+// Is attempts to match the provided error against errors of a multierror.
+//
+// This function behaves similarly to errors.Is, but, if a multierror is
+// passed, will use through those.
+func Is(err, target error) bool {
+	// If err is exactly equal to target, short-circuit the check.
+	// It also captures when both err and target are multierrors.
+	if err == target {
+		return true
+	}
+	eg, ok := err.(*multiError)
+	if !ok {
+		return errors.Is(err, target)
+	}
+
+	return eg.Is(target)
+}
+
 // multiError is an error that holds one or more errors.
 //
 // An instance of this is guaranteed to be non-empty and flattened. That is,
