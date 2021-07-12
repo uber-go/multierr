@@ -103,7 +103,7 @@
 // 		if err != nil {
 // 			return err
 // 		}
-// 		defer multierr.AppendInvoke(err, multierr.Close(conn))
+// 		defer multierr.AppendInvoke(&err, multierr.Close(conn))
 // 		// ...
 // 	}
 //
