@@ -381,8 +381,12 @@ func fromSlice(errors []error) error {
 		return errors[res.FirstErrorIdx]
 	case len(errors):
 		if !res.ContainsMultiError {
-			// already flat
-			return &multiError{errors: errors}
+			// Error list is flat.
+			// Make a copy of it (otherwise "errors" escapes to the
+			// heap) unconditionally for all other cases.
+			out := make([]error, len(errors))
+			copy(out, errors)
+			return &multiError{errors: out}
 		}
 	}
 
@@ -434,42 +438,7 @@ func fromSlice(errors []error) error {
 //
 // 	fmt.Sprintf("%+v", multierr.Combine(err1, err2))
 func Combine(errors ...error) error {
-	switch len(errors) {
-	case 0:
-		return nil
-	case 1:
-		return errors[0]
-	case 2:
-		return Append(errors[0], errors[1])
-	default:
-		idx := -1
-		onlyOne := false
-		for i, err := range errors {
-			if err != nil {
-				if onlyOne {
-					onlyOne = false
-					break
-				}
-				onlyOne = true
-				idx = i
-			}
-		}
-
-		if idx == -1 {
-			return nil
-		}
-
-		if onlyOne {
-			return errors[idx]
-		}
-
-		// If we don't copy the errors slice here the escape analysis will mark
-		// it, which will result in a heap allocation on every call.
-		errs := make([]error, len(errors)-idx)
-		copy(errs, errors[idx:])
-
-		return fromSlice(errs)
-	}
+	return fromSlice(errors)
 }
 
 // Append appends the given errors together. Either value may be nil.
