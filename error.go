@@ -389,9 +389,10 @@ func fromSlice(errors []error) error {
 		return errors[res.FirstErrorIdx]
 	case len(errors):
 		if !res.ContainsMultiError {
-			// Error list is flat.
-			// Make a copy of it (otherwise "errors" escapes to the
-			// heap) unconditionally for all other cases.
+			// Error list is flat. Make a copy of it
+			// Otherwise "errors" escapes to the heap
+			// unconditionally for all other cases.
+			// This lets us optimize for the "no errors" case.
 			out := make([]error, len(errors))
 			copy(out, errors)
 			return &multiError{errors: out}
