@@ -372,6 +372,14 @@ func inspect(errors []error) (res inspectResult) {
 
 // fromSlice converts the given list of errors into a single error.
 func fromSlice(errors []error) error {
+	// Don't pay to inspect small slices.
+	switch len(errors) {
+	case 0:
+		return nil
+	case 1:
+		return errors[0]
+	}
+
 	res := inspect(errors)
 	switch res.Count {
 	case 0:
