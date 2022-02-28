@@ -444,7 +444,6 @@ func Combine(errors ...error) error {
 	default:
 		idx := -1
 		onlyOne := false
-		// wasNil := true
 		for i, err := range errors {
 			if err != nil {
 				if onlyOne {
@@ -464,8 +463,8 @@ func Combine(errors ...error) error {
 			return errors[idx]
 		}
 
-		// If we don't copy the errors slice the escape analysis will mark errors
-		// and it will always be allocated on the heap.
+		// If we don't copy the errors slice here the escape analysis will mark
+		// it, which will result in a heap allocation on every call.
 		errs := make([]error, len(errors)-idx)
 		copy(errs, errors[idx:])
 
