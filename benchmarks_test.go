@@ -102,25 +102,25 @@ func BenchmarkCombine(b *testing.B) {
 	})
 
 	b.Run("slice 100 no errors", func(b *testing.B) {
+		errs := make([]error, 100)
 		for i := 0; i < b.N; i++ {
-			errs := make([]error, 100)
 			Combine(errs...)
 		}
 	})
 
 	b.Run("slice 100 one error", func(b *testing.B) {
+		errs := make([]error, 100)
+		errs[len(errs)-1] = fmt.Errorf("failed")
 		for i := 0; i < b.N; i++ {
-			errs := make([]error, 100)
-			errs[len(errs)-1] = fmt.Errorf("failed")
 			Combine(errs...)
 		}
 	})
 
 	b.Run("slice 100 multi error", func(b *testing.B) {
+		errs := make([]error, 100)
+		errs[0] = fmt.Errorf("failed1")
+		errs[len(errs)-1] = fmt.Errorf("failed2")
 		for i := 0; i < b.N; i++ {
-			errs := make([]error, 100)
-			errs[0] = fmt.Errorf("failed1")
-			errs[len(errs)-1] = fmt.Errorf("failed2")
 			Combine(errs...)
 		}
 	})
