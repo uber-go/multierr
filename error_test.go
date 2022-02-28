@@ -98,6 +98,12 @@ func TestCombine(t *testing.T) {
 			wantSingleline: "foo; bar",
 		},
 		{
+			giveErrors:     []error{nil, nil, errors.New("great sadness"), nil},
+			wantError:      errors.New("great sadness"),
+			wantMultiline:  "great sadness",
+			wantSingleline: "great sadness",
+		},
+		{
 			giveErrors: []error{
 				errors.New("foo"),
 				newMultiErr(
@@ -271,6 +277,14 @@ func TestCombineDoesNotModifySlice(t *testing.T) {
 	assert.NotNil(t, Combine(errors...))
 	assert.Len(t, errors, 3)
 	assert.Nil(t, errors[1], 3)
+}
+
+func TestCombineGoodCaseNoAlloc(t *testing.T) {
+	errs := make([]error, 10)
+	allocs := testing.AllocsPerRun(100, func() {
+		Combine(errs...)
+	})
+	assert.Equal(t, 0.0, allocs)
 }
 
 func TestAppend(t *testing.T) {

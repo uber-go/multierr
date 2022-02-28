@@ -60,3 +60,68 @@ func BenchmarkAppend(b *testing.B) {
 		}
 	}
 }
+
+func BenchmarkCombine(b *testing.B) {
+	b.Run("inline 1", func(b *testing.B) {
+		var x error
+		for i := 0; i < b.N; i++ {
+			Combine(x)
+		}
+	})
+
+	b.Run("inline 2", func(b *testing.B) {
+		var x, y error
+		for i := 0; i < b.N; i++ {
+			Combine(x, y)
+		}
+	})
+
+	b.Run("inline 3 no error", func(b *testing.B) {
+		var x, y, z error
+		for i := 0; i < b.N; i++ {
+			Combine(x, y, z)
+		}
+	})
+
+	b.Run("inline 3 one error", func(b *testing.B) {
+		var x, y, z error
+		z = fmt.Errorf("failed")
+		for i := 0; i < b.N; i++ {
+			Combine(x, y, z)
+		}
+	})
+
+	b.Run("inline 3 multiple errors", func(b *testing.B) {
+		var x, y, z error
+		z = fmt.Errorf("failed3")
+		y = fmt.Errorf("failed2")
+		x = fmt.Errorf("failed")
+		for i := 0; i < b.N; i++ {
+			Combine(x, y, z)
+		}
+	})
+
+	b.Run("slice 100 no errors", func(b *testing.B) {
+		errs := make([]error, 100)
+		for i := 0; i < b.N; i++ {
+			Combine(errs...)
+		}
+	})
+
+	b.Run("slice 100 one error", func(b *testing.B) {
+		errs := make([]error, 100)
+		errs[len(errs)-1] = fmt.Errorf("failed")
+		for i := 0; i < b.N; i++ {
+			Combine(errs...)
+		}
+	})
+
+	b.Run("slice 100 multi error", func(b *testing.B) {
+		errs := make([]error, 100)
+		errs[0] = fmt.Errorf("failed1")
+		errs[len(errs)-1] = fmt.Errorf("failed2")
+		for i := 0; i < b.N; i++ {
+			Combine(errs...)
+		}
+	})
+}
