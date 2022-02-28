@@ -98,6 +98,12 @@ func TestCombine(t *testing.T) {
 			wantSingleline: "foo; bar",
 		},
 		{
+			giveErrors:     []error{nil, nil, errors.New("great sadness"), nil},
+			wantError:      errors.New("great sadness"),
+			wantMultiline:  "great sadness",
+			wantSingleline: "great sadness",
+		},
+		{
 			giveErrors: []error{
 				errors.New("foo"),
 				newMultiErr(
