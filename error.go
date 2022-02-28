@@ -442,21 +442,32 @@ func Combine(errors ...error) error {
 	case 2:
 		return Append(errors[0], errors[1])
 	default:
-		wasNil := true
-		for _, err := range errors {
+		idx := -1
+		onlyOne := false
+		// wasNil := true
+		for i, err := range errors {
 			if err != nil {
-				wasNil = false
-				break
+				if onlyOne {
+					onlyOne = false
+					break
+				}
+				onlyOne = true
+				idx = i
 			}
 		}
-		if wasNil {
+
+		if idx == -1 {
 			return nil
+		}
+
+		if onlyOne {
+			return errors[idx]
 		}
 
 		// If we don't copy the errors slice the escape analysis will mark errors
 		// and it will always be allocated on the heap.
-		errs := make([]error, len(errors))
-		copy(errs, errors)
+		errs := make([]error, len(errors)-idx)
+		copy(errs, errors[idx:])
 
 		return fromSlice(errs)
 	}

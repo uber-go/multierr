@@ -281,6 +281,12 @@ func TestCombineGoodCaseNoAlloc(t *testing.T) {
 	assert.Equal(t, 0.0, allocs)
 }
 
+func TestOptimize(t *testing.T) {
+	errs := make([]error, 100)
+	errs[len(errs)-1] = fmt.Errorf("failed")
+	Combine(errs...)
+}
+
 func TestAppend(t *testing.T) {
 	tests := []struct {
 		left  error
