@@ -274,17 +274,11 @@ func TestCombineDoesNotModifySlice(t *testing.T) {
 }
 
 func TestCombineGoodCaseNoAlloc(t *testing.T) {
-	var x, y, z error
+	errs := make([]error, 10)
 	allocs := testing.AllocsPerRun(100, func() {
-		Combine(x, y, z)
+		Combine(errs...)
 	})
 	assert.Equal(t, 0.0, allocs)
-}
-
-func TestOptimize(t *testing.T) {
-	errs := make([]error, 100)
-	errs[len(errs)-1] = fmt.Errorf("failed")
-	Combine(errs...)
 }
 
 func TestAppend(t *testing.T) {
