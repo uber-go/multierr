@@ -434,7 +434,32 @@ func fromSlice(errors []error) error {
 //
 // 	fmt.Sprintf("%+v", multierr.Combine(err1, err2))
 func Combine(errors ...error) error {
-	return fromSlice(errors)
+	switch len(errors) {
+	case 0:
+		return nil
+	case 1:
+		return errors[0]
+	case 2:
+		return Append(errors[0], errors[1])
+	default:
+		wasNil := true
+		for _, err := range errors {
+			if err != nil {
+				wasNil = false
+				break
+			}
+		}
+		if wasNil {
+			return nil
+		}
+
+		// If we don't copy the errors slice the escape analysis will mark errors
+		// and it will always be allocated on the heap.
+		errs := make([]error, len(errors))
+		copy(errs, errors)
+
+		return fromSlice(errs)
+	}
 }
 
 // Append appends the given errors together. Either value may be nil.

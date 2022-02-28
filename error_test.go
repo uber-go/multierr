@@ -273,6 +273,14 @@ func TestCombineDoesNotModifySlice(t *testing.T) {
 	assert.Nil(t, errors[1], 3)
 }
 
+func TestCombineGoodCaseNoAlloc(t *testing.T) {
+	var x, y, z error
+	allocs := testing.AllocsPerRun(100, func() {
+		Combine(x, y, z)
+	})
+	assert.Equal(t, 0.0, allocs)
+}
+
 func TestAppend(t *testing.T) {
 	tests := []struct {
 		left  error

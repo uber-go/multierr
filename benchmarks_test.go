@@ -60,3 +60,42 @@ func BenchmarkAppend(b *testing.B) {
 		}
 	}
 }
+
+func BenchmarkCombine(b *testing.B) {
+	b.Run("inline 1", func(b *testing.B) {
+		var x error
+		for i := 0; i < b.N; i++ {
+			Combine(x)
+		}
+	})
+
+	b.Run("inline 2", func(b *testing.B) {
+		var x, y error
+		for i := 0; i < b.N; i++ {
+			Combine(x, y)
+		}
+	})
+
+	b.Run("inline 3", func(b *testing.B) {
+		var x, y, z error
+		for i := 0; i < b.N; i++ {
+			Combine(x, y, z)
+		}
+	})
+
+	b.Run("inline 3 with error", func(b *testing.B) {
+		var x, y, z error
+		z = fmt.Errorf("failed")
+		for i := 0; i < b.N; i++ {
+			Combine(x, y, z)
+		}
+	})
+
+	b.Run("slice", func(b *testing.B) {
+		var x, y, z error
+		for i := 0; i < b.N; i++ {
+			errs := []error{x, y, z}
+			Combine(errs...)
+		}
+	})
+}
