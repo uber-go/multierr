@@ -209,10 +209,7 @@ func Errors(err error) []error {
 		return []error{err}
 	}
 
-	errors := eg.Errors()
-	result := make([]error, len(errors))
-	copy(result, errors)
-	return result
+	return append(([]error)(nil), eg.Errors()...)
 }
 
 // multiError is an error that holds one or more errors.
@@ -393,8 +390,7 @@ func fromSlice(errors []error) error {
 			// Otherwise "errors" escapes to the heap
 			// unconditionally for all other cases.
 			// This lets us optimize for the "no errors" case.
-			out := make([]error, len(errors))
-			copy(out, errors)
+			out := append(([]error)(nil), errors...)
 			return &multiError{errors: out}
 		}
 	}
