@@ -22,7 +22,6 @@ package multierr_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -37,7 +36,7 @@ func ExampleAppendInvoke() {
 }
 
 func run() (err error) {
-	dir, err := ioutil.TempDir("", "multierr")
+	dir, err := os.MkdirTemp("", "multierr")
 	// We create a temporary directory and defer its deletion when this
 	// function returns.
 	//
