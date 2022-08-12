@@ -75,7 +75,7 @@
 // This will append the error into the err variable, and return true if that
 // individual error was non-nil.
 //
-// See AppendInto for more information.
+// See [AppendInto] for more information.
 //
 // # Deferred Functions
 //
@@ -107,7 +107,10 @@
 //		// ...
 //	}
 //
-// See AppendInvoke and Invoker for more information.
+// See [AppendInvoke] and [Invoker] for more information.
+//
+// NOTE: If you're modifying an error from inside a defer, you MUST use a named
+// return value for that function.
 //
 // # Advanced Usage
 //
@@ -461,6 +464,9 @@ func Combine(errors ...error) error {
 //		defer func() {
 //			err = multierr.Append(err, f.Close())
 //		}()
+//
+// Note that the variable MUST be a named return to append an error to it from
+// the defer statement. See also [AppendInvoke].
 func Append(left error, right error) error {
 	switch {
 	case left == nil:
@@ -541,7 +547,7 @@ func AppendInto(into *error, err error) (errored bool) {
 // AppendInvoke to append the result of calling the function into an error.
 // This allows you to conveniently defer capture of failing operations.
 //
-// See also, Close and Invoke.
+// See also, [Close] and [Invoke].
 type Invoker interface {
 	Invoke() error
 }
@@ -565,6 +571,9 @@ type Invoker interface {
 // but defer the invocation of scanner.Err() until the function returns.
 //
 //	defer multierr.AppendInvoke(&err, multierr.Invoke(scanner.Err))
+//
+// Note that the error you're appending to from the defer statement MUST be a
+// named return.
 type Invoke func() error
 
 // Invoke calls the supplied function and returns its result.
@@ -588,6 +597,9 @@ func (i Invoke) Invoke() error { return i() }
 // defer the invocation of f.Close until the function returns.
 //
 //	defer multierr.AppendInvoke(&err, multierr.Close(f))
+//
+// Note that the error you're appending to from the defer statement MUST be a
+// named return.
 func Close(closer io.Closer) Invoker {
 	return Invoke(closer.Close)
 }
@@ -618,6 +630,8 @@ func Close(closer io.Closer) Invoker {
 //		// ...
 //	}
 //
+// NOTE: If used with a defer, the error variable MUST be a named return.
+//
 // Without defer, AppendInvoke behaves exactly like AppendInto.
 //
 //	err := // ...
@@ -642,7 +656,7 @@ func Close(closer io.Closer) Invoker {
 //	defer multierr.AppendInvoke(&err, multierr.Invoke(foo))
 //
 // multierr provides a few Invoker implementations out of the box for
-// convenience. See Invoker for more information.
+// convenience. See [Invoker] for more information.
 func AppendInvoke(into *error, invoker Invoker) {
 	AppendInto(into, invoker.Invoke())
 }
