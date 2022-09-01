@@ -660,3 +660,10 @@ func Close(closer io.Closer) Invoker {
 func AppendInvoke(into *error, invoker Invoker) {
 	AppendInto(into, invoker.Invoke())
 }
+
+// AppendFunc is a shorthand for AppendInvoke.
+// It allows using function or method value directly
+// without having to wrap it into an Invoker interface.
+func AppendFunc(into *error, fn func() error) {
+	AppendInvoke(into, Invoke(fn))
+}
