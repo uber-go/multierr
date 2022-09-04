@@ -661,9 +661,21 @@ func AppendInvoke(into *error, invoker Invoker) {
 	AppendInto(into, invoker.Invoke())
 }
 
-// AppendFunc is a shorthand for AppendInvoke.
+// AppendFunc is a shorthand for [AppendInvoke].
 // It allows using function or method value directly
-// without having to wrap it into an Invoker interface.
+// without having to wrap it into an [Invoker] interface.
+//
+//	func doSomething(...) (err error) {
+//		w, err := startWorker(...)
+//		if err != nil {
+//			return err
+//		}
+//
+//		// multierr will call w.Stop() when this function returns and
+//		// if the operation fails, it appends its error into the
+//		// returned error.
+//		defer multierr.AppendFunc(&err, w.Stop)
+//	}
 func AppendFunc(into *error, fn func() error) {
 	AppendInvoke(into, Invoke(fn))
 }
