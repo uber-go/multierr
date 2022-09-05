@@ -685,13 +685,11 @@ func TestAppendFunc(t *testing.T) {
 		return errDeferred
 	}
 
-	do := func() (err error) {
+	err := func() (err error) {
 		defer AppendFunc(&err, stopFunc)
 
 		return errOriginal
-	}
-
-	err := do()
+	}()
 	assert.Equal(t, []error{errOriginal, errDeferred}, Errors(err), "both deferred and original error must be returned")
 }
 
