@@ -675,6 +675,24 @@ func TestAppendIntoNil(t *testing.T) {
 	})
 }
 
+func TestAppendFunc(t *testing.T) {
+	var (
+		errDeferred = errors.New("deferred func called")
+		errOriginal = errors.New("original error")
+	)
+
+	stopFunc := func() error {
+		return errDeferred
+	}
+
+	err := func() (err error) {
+		defer AppendFunc(&err, stopFunc)
+
+		return errOriginal
+	}()
+	assert.Equal(t, []error{errOriginal, errDeferred}, Errors(err), "both deferred and original error must be returned")
+}
+
 func errorPtr(err error) *error {
 	return &err
 }
