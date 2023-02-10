@@ -1,6 +1,11 @@
 Releases
 ========
 
+v1.10.0 (unreleased)
+====================
+
+-   Comply with Go 1.20's multiple-error interface.
+
 v1.9.0 (2022-12-12)
 ===================
 
