@@ -146,8 +146,7 @@ import (
 	"io"
 	"strings"
 	"sync"
-
-	"go.uber.org/atomic"
+	"sync/atomic"
 )
 
 var (
