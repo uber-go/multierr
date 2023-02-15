@@ -17,6 +17,8 @@
 - **Interoperable**:
   multierr interoperates with the Go standard library's error APIs seamlessly:
     - The `errors.Is` and `errors.As` functions *just work*.
+- **Lightweight**:
+  multierr comes with virtually no dependencies.
 
 ## Installation
 
