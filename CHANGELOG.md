@@ -1,6 +1,11 @@
 Releases
 ========
 
+Unreleased
+====================
+-   `Errors` now supports any error that implements multiple-error
+    interface.
+
 v1.10.0 (2023-03-08)
 ====================
 
