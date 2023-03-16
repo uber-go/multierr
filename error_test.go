@@ -386,7 +386,8 @@ func TestErrors(t *testing.T) {
 			dontCast: true,
 		},
 		{
-			// We don't yet support non-multierr errors.
+			// We don't yet support non-multierr errors that do
+			// not implement Unwrap() []error.
 			give:     notMultiErr{},
 			want:     []error{notMultiErr{}},
 			dontCast: true,

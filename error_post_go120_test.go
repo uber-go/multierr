@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2023 Uber Technologies, Inc.
+// Copyright (c) 2023 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -23,26 +23,20 @@
 
 package multierr
 
-// Unwrap returns a list of errors wrapped by this multierr.
-func (merr *multiError) Unwrap() []error {
-	return merr.Errors()
-}
+import (
+	"errors"
+	"testing"
 
-type multipleErrors interface {
-	Unwrap() []error
-}
+	"github.com/stretchr/testify/assert"
+)
 
-func extractErrors(err error) []error {
-	if err == nil {
-		return nil
-	}
+func TestErrorsOnErrorsJoin(t *testing.T) {
+	err1 := errors.New("err1")
+	err2 := errors.New("err2")
+	err := errors.Join(err1, err2)
 
-	// check if the given err is an Unwrapable error that
-	// implements multipleErrors interface.
-	eg, ok := err.(multipleErrors)
-	if !ok {
-		return []error{err}
-	}
-
-	return append(([]error)(nil), eg.Unwrap()...)
+	errs := Errors(err)
+	assert.Equal(t, 2, len(errs))
+	assert.Equal(t, err1, errs[0])
+	assert.Equal(t, err2, errs[1])
 }
