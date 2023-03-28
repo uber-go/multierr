@@ -59,6 +59,67 @@ func newMultiErr(errors ...error) error {
 	return &multiError{errors: errors}
 }
 
+func TestEvery(t *testing.T) {
+	myError1 := errors.New("woeful misfortune")
+	myError2 := errors.New("worrisome travesty")
+
+	for _, tt := range []struct {
+		desc       string
+		giveErr    error
+		giveTarget error
+		wantIs     bool
+		wantEvery  bool
+	}{
+		{
+			desc:       "all match",
+			giveErr:    newMultiErr(myError1, myError1, myError1),
+			giveTarget: myError1,
+			wantIs:     true,
+			wantEvery:  true,
+		},
+		{
+			desc:       "one matches",
+			giveErr:    newMultiErr(myError1, myError2),
+			giveTarget: myError1,
+			wantIs:     true,
+			wantEvery:  false,
+		},
+		{
+			desc:       "not multiErrs and non equal",
+			giveErr:    myError1,
+			giveTarget: myError2,
+			wantIs:     false,
+			wantEvery:  false,
+		},
+		{
+			desc:       "not multiErrs but equal",
+			giveErr:    myError1,
+			giveTarget: myError1,
+			wantIs:     true,
+			wantEvery:  true,
+		},
+		{
+			desc:       "not multiErr w multiErr target",
+			giveErr:    myError1,
+			giveTarget: newMultiErr(myError1, myError1),
+			wantIs:     false,
+			wantEvery:  false,
+		},
+		{
+			desc:       "multiErr w multiErr target",
+			giveErr:    newMultiErr(myError1, myError1),
+			giveTarget: newMultiErr(myError1, myError1),
+			wantIs:     false,
+			wantEvery:  false,
+		},
+	} {
+		t.Run(tt.desc, func(t *testing.T) {
+			assert.Equal(t, tt.wantIs, errors.Is(tt.giveErr, tt.giveTarget))
+			assert.Equal(t, tt.wantEvery, Every(tt.giveErr, tt.giveTarget))
+		})
+	}
+}
+
 func TestCombine(t *testing.T) {
 	tests := []struct {
 		// Input
