@@ -40,3 +40,28 @@ func TestErrorsOnErrorsJoin(t *testing.T) {
 	assert.Equal(t, err1, errs[0])
 	assert.Equal(t, err2, errs[1])
 }
+
+func TestEveryWithErrorsJoin(t *testing.T) {
+	myError1 := errors.New("woeful misfortune")
+	myError2 := errors.New("worrisome travesty")
+
+	t.Run("all match", func(t *testing.T) {
+		err := errors.Join(myError1, myError1, myError1)
+
+		assert.True(t, errors.Is(err, myError1))
+		assert.True(t, Every(err, myError1))
+		assert.False(t, errors.Is(err, myError2))
+		assert.False(t, Every(err, myError2))
+	})
+
+	t.Run("one matches", func(t *testing.T) {
+		err := errors.Join(myError1, myError2)
+
+		assert.True(t, errors.Is(err, myError1))
+		assert.False(t, Every(err, myError1))
+		assert.True(t, errors.Is(err, myError2))
+		assert.False(t, Every(err, myError2))
+	})
+
+
+}
