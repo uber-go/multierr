@@ -142,6 +142,7 @@ package multierr // import "go.uber.org/multierr"
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -232,6 +233,17 @@ func (merr *multiError) Error() string {
 	result := buff.String()
 	_bufferPool.Put(buff)
 	return result
+}
+
+// Every compares every error in the given err against the given target error
+// using [errors.Is], and returns true only if every comparison returned true.
+func Every(err error, target error) bool {
+	for _, e := range extractErrors(err) {
+		if !errors.Is(e, target) {
+			return false
+		}
+	}
+	return true
 }
 
 func (merr *multiError) Format(f fmt.State, c rune) {
