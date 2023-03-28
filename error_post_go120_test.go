@@ -62,6 +62,4 @@ func TestEveryWithErrorsJoin(t *testing.T) {
 		assert.True(t, errors.Is(err, myError2))
 		assert.False(t, Every(err, myError2))
 	})
-
-
 }
