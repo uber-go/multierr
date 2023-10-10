@@ -115,24 +115,22 @@
 // # Advanced Usage
 //
 // Errors returned by Combine and Append MAY implement the following
-// interface.
+// method.
 //
-//	type errorGroup interface {
-//		// Returns a slice containing the underlying list of errors.
-//		//
-//		// This slice MUST NOT be modified by the caller.
-//		Errors() []error
-//	}
+//	// Returns a slice containing the underlying list of errors.
+//	//
+//	// This slice MUST NOT be modified by the caller.
+//	Unwrap() []error
 //
 // Note that if you need access to list of errors behind a multierr error, you
-// should prefer using the Errors function. That said, if you need cheap
+// should prefer using the [Errors] function. That said, if you need cheap
 // read-only access to the underlying errors slice, you can attempt to cast
 // the error to this interface. You MUST handle the failure case gracefully
 // because errors returned by Combine and Append are not guaranteed to
 // implement this interface.
 //
 //	var errors []error
-//	group, ok := err.(errorGroup)
+//	group, ok := err.(interface{ Unwrap() []error })
 //	if ok {
 //		errors = group.Errors()
 //	} else {
@@ -180,8 +178,18 @@ var _bufferPool = sync.Pool{
 	},
 }
 
+// errorGroup is the old interface defined by multierr for combined errors.
+//
+// It is deprecated in favor of the Go 1.20 multi-error interface.
+// However, we still need to implement and support it
+// for backward compatibility.
 type errorGroup interface {
 	Errors() []error
+}
+
+// multipleErrors matches the Go 1.20 multi-error interface.
+type multipleErrors interface {
+	Unwrap() []error
 }
 
 // Errors returns a slice containing zero or more errors that the supplied
@@ -210,6 +218,13 @@ type multiError struct {
 	errors     []error
 }
 
+// Unwrap returns a list of errors wrapped by this multierr.
+//
+// This satisfies the Go 1.20 multi-error interface.
+func (merr *multiError) Unwrap() []error {
+	return merr.Errors()
+}
+
 // Errors returns the list of underlying errors.
 //
 // This slice MUST NOT be modified.
@@ -233,17 +248,6 @@ func (merr *multiError) Error() string {
 	result := buff.String()
 	_bufferPool.Put(buff)
 	return result
-}
-
-// Every compares every error in the given err against the given target error
-// using [errors.Is], and returns true only if every comparison returned true.
-func Every(err error, target error) bool {
-	for _, e := range extractErrors(err) {
-		if !errors.Is(e, target) {
-			return false
-		}
-	}
-	return true
 }
 
 func (merr *multiError) Format(f fmt.State, c rune) {
@@ -506,6 +510,32 @@ func AppendInto(into *error, err error) (errored bool) {
 	}
 	*into = Append(*into, err)
 	return true
+}
+
+// Every compares every error in the given err against the given target error
+// using [errors.Is], and returns true only if every comparison returned true.
+func Every(err error, target error) bool {
+	for _, e := range extractErrors(err) {
+		if !errors.Is(e, target) {
+			return false
+		}
+	}
+	return true
+}
+
+func extractErrors(err error) []error {
+	if err == nil {
+		return nil
+	}
+
+	// check if the given err is an Unwrapable error that
+	// implements multipleErrors interface.
+	eg, ok := err.(multipleErrors)
+	if !ok {
+		return []error{err}
+	}
+
+	return append(([]error)(nil), eg.Unwrap()...)
 }
 
 // Invoker is an operation that may fail with an error. Use it with
