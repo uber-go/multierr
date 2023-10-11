@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2021 Uber Technologies, Inc.
+// Copyright (c) 2017-2023 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -775,5 +775,39 @@ func newCloserMock(tb testing.TB, err error) io.Closer {
 	return closerMock(func() error {
 		closed = true
 		return err
+	})
+}
+
+func TestErrorsOnErrorsJoin(t *testing.T) {
+	err1 := errors.New("err1")
+	err2 := errors.New("err2")
+	err := errors.Join(err1, err2)
+
+	errs := Errors(err)
+	assert.Equal(t, 2, len(errs))
+	assert.Equal(t, err1, errs[0])
+	assert.Equal(t, err2, errs[1])
+}
+
+func TestEveryWithErrorsJoin(t *testing.T) {
+	myError1 := errors.New("woeful misfortune")
+	myError2 := errors.New("worrisome travesty")
+
+	t.Run("all match", func(t *testing.T) {
+		err := errors.Join(myError1, myError1, myError1)
+
+		assert.True(t, errors.Is(err, myError1))
+		assert.True(t, Every(err, myError1))
+		assert.False(t, errors.Is(err, myError2))
+		assert.False(t, Every(err, myError2))
+	})
+
+	t.Run("one matches", func(t *testing.T) {
+		err := errors.Join(myError1, myError2)
+
+		assert.True(t, errors.Is(err, myError1))
+		assert.False(t, Every(err, myError1))
+		assert.True(t, errors.Is(err, myError2))
+		assert.False(t, Every(err, myError2))
 	})
 }
