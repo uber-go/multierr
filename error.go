@@ -122,7 +122,7 @@
 //	// This slice MUST NOT be modified by the caller.
 //	Unwrap() []error
 //
-// Note that if you need access to list of errors behind a multierr error, you
+// Note that if you need access to the list of errors behind a multierr error, you
 // should prefer using the [Errors] function. That said, if you need cheap
 // read-only access to the underlying errors slice, you can attempt to cast
 // the error to this interface. You MUST handle the failure case gracefully
@@ -132,7 +132,7 @@
 //	var errors []error
 //	group, ok := err.(interface{ Unwrap() []error })
 //	if ok {
-//		errors = group.Errors()
+//		errors = group.Unwrap()
 //	} else {
 //		errors = []error{err}
 //	}
