@@ -332,6 +332,9 @@ func inspect(errors []error) (res inspectResult) {
 		if merr, ok := err.(*multiError); ok {
 			res.Capacity += len(merr.errors)
 			res.ContainsMultiError = true
+		} else if eg, ok := err.(multipleErrors); ok {
+			res.Capacity += len(eg.Unwrap())
+			res.ContainsMultiError = true
 		} else {
 			res.Capacity++
 		}
@@ -375,6 +378,9 @@ func fromSlice(errors []error) error {
 
 		if nested, ok := err.(*multiError); ok {
 			nonNilErrs = append(nonNilErrs, nested.errors...)
+		} else if eg, ok := err.(multipleErrors); ok {
+			// Flatten stdlib errors.Join (and other multi-unwrap) errors.
+			nonNilErrs = append(nonNilErrs, eg.Unwrap()...)
 		} else {
 			nonNilErrs = append(nonNilErrs, err)
 		}
