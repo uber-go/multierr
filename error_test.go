@@ -112,6 +112,20 @@ func TestEvery(t *testing.T) {
 			wantIs:     false,
 			wantEvery:  false,
 		},
+		{
+			desc:       "nil err with target",
+			giveErr:    nil,
+			giveTarget: myError1,
+			wantIs:     false,
+			wantEvery:  true,
+		},
+		{
+			desc:       "nil err with nil target",
+			giveErr:    nil,
+			giveTarget: nil,
+			wantIs:     true,
+			wantEvery:  true,
+		},
 	} {
 		t.Run(tt.desc, func(t *testing.T) {
 			assert.Equal(t, tt.wantIs, errors.Is(tt.giveErr, tt.giveTarget))
