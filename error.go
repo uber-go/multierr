@@ -132,7 +132,7 @@
 //	var errors []error
 //	group, ok := err.(interface{ Unwrap() []error })
 //	if ok {
-//		errors = group.Errors()
+//		errors = group.Unwrap()
 //	} else {
 //		errors = []error{err}
 //	}
