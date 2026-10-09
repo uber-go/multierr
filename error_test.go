@@ -447,10 +447,8 @@ func TestErrors(t *testing.T) {
 			dontCast: true,
 		},
 		{
-			// We don't yet support non-multierr errors that do
-			// not implement Unwrap() []error.
 			give:     notMultiErr{},
-			want:     []error{notMultiErr{}},
+			want:     []error{errors.New("great sadness")},
 			dontCast: true,
 		},
 		{
@@ -808,6 +806,212 @@ func TestEveryWithErrorsJoin(t *testing.T) {
 		assert.True(t, errors.Is(err, myError1))
 		assert.False(t, Every(err, myError1))
 		assert.True(t, errors.Is(err, myError2))
+		assert.False(t, Every(err, myError2))
+	})
+}
+
+type customUnwrapErr struct {
+	errs []error
+}
+
+func (e customUnwrapErr) Error() string {
+	return "custom unwrap error"
+}
+
+func (e customUnwrapErr) Unwrap() []error {
+	return e.errs
+}
+
+type customErrorsErr struct {
+	errs []error
+}
+
+func (e customErrorsErr) Error() string {
+	return "custom errors error"
+}
+
+func (e customErrorsErr) Errors() []error {
+	return e.errs
+}
+
+type customBothErr struct {
+	errs []error
+}
+
+func (e customBothErr) Error() string {
+	return "custom both error"
+}
+
+func (e customBothErr) Unwrap() []error {
+	return e.errs
+}
+
+func (e customBothErr) Errors() []error {
+	return e.errs
+}
+
+type plainErr struct{}
+
+func (plainErr) Error() string {
+	return "plain error"
+}
+
+func TestErrorsWithCustomTypes(t *testing.T) {
+	err1 := errors.New("err1")
+	err2 := errors.New("err2")
+
+	t.Run("multipleErrors", func(t *testing.T) {
+		err := customUnwrapErr{errs: []error{err1, err2}}
+		assert.Equal(t, []error{err1, err2}, Errors(err))
+	})
+
+	t.Run("errorGroup", func(t *testing.T) {
+		err := customErrorsErr{errs: []error{err1, err2}}
+		assert.Equal(t, []error{err1, err2}, Errors(err))
+	})
+
+	t.Run("both interfaces", func(t *testing.T) {
+		err := customBothErr{errs: []error{err1, err2}}
+		assert.Equal(t, []error{err1, err2}, Errors(err))
+	})
+
+	t.Run("plain error", func(t *testing.T) {
+		err := plainErr{}
+		assert.Equal(t, []error{err}, Errors(err))
+	})
+
+	t.Run("empty multi errors", func(t *testing.T) {
+		err := customUnwrapErr{errs: nil}
+		assert.Empty(t, Errors(err))
+	})
+}
+
+func TestCombineWithCustomTypes(t *testing.T) {
+	err1 := errors.New("err1")
+	err2 := errors.New("err2")
+	err3 := errors.New("err3")
+
+	t.Run("single with custom unwrap", func(t *testing.T) {
+		combined := Combine(err1, customUnwrapErr{errs: []error{err2, err3}})
+		assert.Equal(t, []error{err1, err2, err3}, Errors(combined))
+	})
+
+	t.Run("single with custom errors", func(t *testing.T) {
+		combined := Combine(err1, customErrorsErr{errs: []error{err2, err3}})
+		assert.Equal(t, []error{err1, err2, err3}, Errors(combined))
+	})
+
+	t.Run("custom unwrap with custom errors", func(t *testing.T) {
+		combined := Combine(customUnwrapErr{errs: []error{err1}}, customErrorsErr{errs: []error{err2, err3}})
+		assert.Equal(t, []error{err1, err2, err3}, Errors(combined))
+	})
+
+	t.Run("nested custom multi error", func(t *testing.T) {
+		nested := customUnwrapErr{errs: []error{customErrorsErr{errs: []error{err1, err2}}, err3}}
+		combined := Combine(nested, errors.New("err4"))
+		assert.Equal(t, []error{err1, err2, err3, errors.New("err4")}, Errors(combined))
+	})
+
+	t.Run("custom empty combined with single", func(t *testing.T) {
+		combined := Combine(err1, customUnwrapErr{errs: nil})
+		assert.Equal(t, err1, combined)
+	})
+
+	t.Run("custom empty combined with custom empty", func(t *testing.T) {
+		combined := Combine(customUnwrapErr{errs: nil}, customErrorsErr{errs: nil})
+		assert.Nil(t, combined)
+	})
+}
+
+func TestAppendWithCustomTypes(t *testing.T) {
+	err1 := errors.New("err1")
+	err2 := errors.New("err2")
+	err3 := errors.New("err3")
+
+	t.Run("single left, custom unwrap right", func(t *testing.T) {
+		res := Append(err1, customUnwrapErr{errs: []error{err2, err3}})
+		assert.Equal(t, []error{err1, err2, err3}, Errors(res))
+	})
+
+	t.Run("custom unwrap left, single right", func(t *testing.T) {
+		res := Append(customUnwrapErr{errs: []error{err1, err2}}, err3)
+		assert.Equal(t, []error{err1, err2, err3}, Errors(res))
+	})
+
+	t.Run("single left, custom errors right", func(t *testing.T) {
+		res := Append(err1, customErrorsErr{errs: []error{err2, err3}})
+		assert.Equal(t, []error{err1, err2, err3}, Errors(res))
+	})
+
+	t.Run("custom errors left, single right", func(t *testing.T) {
+		res := Append(customErrorsErr{errs: []error{err1, err2}}, err3)
+		assert.Equal(t, []error{err1, err2, err3}, Errors(res))
+	})
+
+	t.Run("multierr left, custom unwrap right", func(t *testing.T) {
+		left := Append(err1, err2)
+		res := Append(left, customUnwrapErr{errs: []error{err3}})
+		assert.Equal(t, []error{err1, err2, err3}, Errors(res))
+	})
+
+	t.Run("multierr left, custom errors right", func(t *testing.T) {
+		left := Append(err1, err2)
+		res := Append(left, customErrorsErr{errs: []error{err3}})
+		assert.Equal(t, []error{err1, err2, err3}, Errors(res))
+	})
+
+	t.Run("custom unwrap left, multierr right", func(t *testing.T) {
+		right := Append(err2, err3)
+		res := Append(customUnwrapErr{errs: []error{err1}}, right)
+		assert.Equal(t, []error{err1, err2, err3}, Errors(res))
+	})
+
+	t.Run("custom errors left, multierr right", func(t *testing.T) {
+		right := Append(err2, err3)
+		res := Append(customErrorsErr{errs: []error{err1}}, right)
+		assert.Equal(t, []error{err1, err2, err3}, Errors(res))
+	})
+
+	t.Run("custom unwrap left, custom errors right", func(t *testing.T) {
+		res := Append(customUnwrapErr{errs: []error{err1}}, customErrorsErr{errs: []error{err2, err3}})
+		assert.Equal(t, []error{err1, err2, err3}, Errors(res))
+	})
+
+	t.Run("empty custom unwrap right", func(t *testing.T) {
+		res := Append(err1, customUnwrapErr{errs: nil})
+		assert.Equal(t, err1, res)
+	})
+
+	t.Run("empty custom unwrap left", func(t *testing.T) {
+		res := Append(customUnwrapErr{errs: nil}, err1)
+		assert.Equal(t, err1, res)
+	})
+
+	t.Run("empty custom both", func(t *testing.T) {
+		res := Append(customUnwrapErr{errs: nil}, customErrorsErr{errs: nil})
+		assert.Nil(t, res)
+	})
+}
+
+func TestEveryWithCustomTypes(t *testing.T) {
+	myError1 := errors.New("err1")
+	myError2 := errors.New("err2")
+
+	t.Run("errorGroup all match", func(t *testing.T) {
+		err := customErrorsErr{errs: []error{myError1, myError1}}
+		assert.True(t, Every(err, myError1))
+		assert.False(t, Every(err, myError2))
+	})
+
+	t.Run("errorGroup one matches", func(t *testing.T) {
+		err := customErrorsErr{errs: []error{myError1, myError2}}
+		assert.False(t, Every(err, myError1))
+		assert.False(t, Every(err, myError2))
+	})
+
+	t.Run("multipleErrors all match", func(t *testing.T) {
+		err := customUnwrapErr{errs: []error{myError1, myError1}}
+		assert.True(t, Every(err, myError1))
 		assert.False(t, Every(err, myError2))
 	})
 }
